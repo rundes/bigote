@@ -26,7 +26,11 @@ function assertNoError(error, context) {
 // ---------------------------------------------------------------------------
 
 async function findUserByEmail(email) {
-  const { data, error } = await supabase.auth.admin.listUsers();
+  // GoTrue pagina listUsers con perPage=50 por defecto; con más de 50
+  // usuarios en el proyecto, un email demo podría quedar en una página
+  // siguiente y no encontrarse. Subimos perPage (alcanza para este
+  // proyecto; no hace falta paginar del todo).
+  const { data, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   assertNoError(error, `listUsers (buscando ${email})`);
   return data.users.find((u) => u.email === email) ?? null;
 }
@@ -407,7 +411,7 @@ async function main() {
     counts[table] = count;
   }
 
-  const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+  const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   assertNoError(usersError, "listUsers (resumen)");
   const demoEmails = new Set(["admin@demo.test", "coordi@demo.test", "ope@demo.test"]);
   counts.usuarios = usersData.users.filter((u) => demoEmails.has(u.email)).length;
