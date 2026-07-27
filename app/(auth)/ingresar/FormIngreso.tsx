@@ -15,13 +15,18 @@ export function FormIngreso() {
   async function entrarConGoogle() {
     setError(null);
     setCargando("google");
-    const supabase = crearClienteNavegador();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) {
-      setError("Google no está configurado todavía. Probá con tu email.");
+    try {
+      const supabase = crearClienteNavegador();
+      const { error: errorAuth } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (errorAuth) {
+        setError("Google no está configurado todavía. Probá con tu email.");
+      }
+    } catch {
+      setError("No pudimos conectar. Probá de nuevo.");
+    } finally {
       setCargando(null);
     }
   }
@@ -31,15 +36,20 @@ export function FormIngreso() {
     setError(null);
     setEnlaceEnviado(false);
     setCargando("password");
-    const supabase = crearClienteNavegador();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setCargando(null);
-    if (error) {
-      setError("No pudimos ingresarte. Revisá el email y la contraseña.");
-      return;
+    try {
+      const supabase = crearClienteNavegador();
+      const { error: errorAuth } = await supabase.auth.signInWithPassword({ email, password });
+      if (errorAuth) {
+        setError("No pudimos ingresarte. Revisá el email y la contraseña.");
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("No pudimos conectar. Probá de nuevo.");
+    } finally {
+      setCargando(null);
     }
-    router.push("/");
-    router.refresh();
   }
 
   async function mandarEnlaceMagico() {
@@ -49,17 +59,22 @@ export function FormIngreso() {
       return;
     }
     setCargando("magico");
-    const supabase = crearClienteNavegador();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-    setCargando(null);
-    if (error) {
-      setError("No pudimos enviarte el enlace. Probá de nuevo.");
-      return;
+    try {
+      const supabase = crearClienteNavegador();
+      const { error: errorAuth } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (errorAuth) {
+        setError("No pudimos enviarte el enlace. Probá de nuevo.");
+        return;
+      }
+      setEnlaceEnviado(true);
+    } catch {
+      setError("No pudimos conectar. Probá de nuevo.");
+    } finally {
+      setCargando(null);
     }
-    setEnlaceEnviado(true);
   }
 
   return (
