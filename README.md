@@ -31,4 +31,15 @@ npm run start   # servir el build de producción
 npm run lint    # lint
 ```
 
-> Nota: este README se completa en tareas siguientes (auth, Supabase, shell de la app).
+## Autenticación
+
+Login en `/ingresar` con Google OAuth, email+contraseña o enlace mágico. El middleware (`middleware.ts` + `lib/supabase/middleware.ts`) refresca la sesión en cada request y redirige a `/ingresar` a quien no esté autenticado (rutas públicas: `/ingresar` y `/auth/*`).
+
+Configuración pendiente en el Dashboard del proyecto hosted de Supabase (no se hace por código):
+
+- **Auth → Providers → Google**: habilitar el provider con un OAuth client de Google Cloud Console. Redirect URI a registrar en Google Cloud Console: `https://olmjkuapainklekdzntk.supabase.co/auth/v1/callback`.
+- **Auth → URL Configuration → Redirect URLs**: agregar `http://localhost:3000/auth/callback` (y el equivalente de producción cuando exista) a la lista de URLs permitidas.
+
+Si el provider de Google todavía no está configurado, el botón "Continuá con Google" muestra el error correspondiente sin romper el resto del formulario (email/contraseña y enlace mágico funcionan igual).
+
+> Nota: este README se completa en tareas siguientes (Supabase, shell de la app).
