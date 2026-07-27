@@ -152,6 +152,8 @@ create policy reservas_update on reservas for update using (
   or exists (select 1 from salas s join edificios e on e.id = s.edificio_id where s.id = reservas.sala_id
        and (tiene_permiso(e.org_propietaria_id, 'espacios')
             or (e.org_gestora_id is not null and tiene_permiso(e.org_gestora_id, 'espacios'))))
+) with check (
+  exists (select 1 from salas s where s.id = sala_id and opera_edificio(s.edificio_id))
 );
 
 create policy movimientos_select on movimientos for select using (tiene_permiso(org_id, 'finanzas'));
