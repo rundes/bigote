@@ -1,8 +1,17 @@
-export default function Home() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-fondo text-center">
-      <h1 className="text-3xl font-bold text-tinta">bigote</h1>
-      <p className="mt-2 text-tinta-suave">Estamos armando la app.</p>
-    </div>
-  );
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { obtenerContextoOrg, listarMisOrgs } from "@/lib/org";
+
+export default async function Home() {
+  const cookieStore = await cookies();
+  const ultimaOrg = cookieStore.get("ultima_org")?.value;
+
+  if (ultimaOrg) {
+    const contexto = await obtenerContextoOrg(ultimaOrg);
+    if (contexto) redirect(`/o/${ultimaOrg}`);
+  }
+
+  const orgs = await listarMisOrgs();
+  if (orgs.length === 0) redirect("/sin-organizacion");
+  redirect(`/o/${orgs[0].id}`);
 }
