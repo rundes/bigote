@@ -82,7 +82,7 @@ create table edificios (
     check (destino_ingresos in ('propietaria', 'gestora', 'reparto')),
   porcentaje_propietaria numeric,
   created_at timestamptz not null default now(),
-  check (destino_ingresos <> 'reparto' or porcentaje_propietaria between 0 and 100),
+  check (destino_ingresos <> 'reparto' or (porcentaje_propietaria is not null and porcentaje_propietaria between 0 and 100)),
   check (destino_ingresos = 'propietaria' or org_gestora_id is not null)
 );
 
