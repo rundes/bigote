@@ -12,6 +12,19 @@ begin
     raise exception 'Solo plataforma';
   end if;
 
+  -- Reintento idempotente: si un intento anterior creó esta org (y sus
+  -- roles) pero la server action falló después de eso (p. ej. la invitación
+  -- del primer admin), esa org queda huérfana (sin ninguna membresía).
+  -- Reenviar el mismo form no debe duplicarla: reusamos esa org huérfana.
+  select o.id into nueva_org_id
+  from organizaciones o
+  where o.nombre = crear_organizacion.nombre
+    and not exists (select 1 from membresias m where m.org_id = o.id);
+
+  if nueva_org_id is not null then
+    return nueva_org_id;
+  end if;
+
   insert into organizaciones (nombre, tipo) values (nombre, tipo)
   returning id into nueva_org_id;
 

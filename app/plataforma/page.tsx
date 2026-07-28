@@ -22,14 +22,16 @@ export default async function PaginaPlataforma() {
     .maybeSingle();
   if (!superAdmin) redirect("/");
 
-  // Listado con visibilidad cruzada de orgs: el cliente admin evita las
-  // restricciones de RLS sobre membresías (un super-admin no es
-  // necesariamente miembro de todas las orgs que administra la plataforma).
-  const admin = crearClienteAdmin();
-  const { data: orgs } = await admin
+  // El listado de orgs sí lo permite RLS al super-admin (organizaciones_select
+  // tiene la rama es_super_admin()), así que usamos el cliente de sesión acá.
+  // Los conteos de miembros necesitan el cliente admin: un super-admin no es
+  // necesariamente miembro de esas orgs, y membresias_select no lo deja ver
+  // filas de orgs ajenas.
+  const { data: orgs } = await supabase
     .from("organizaciones")
     .select("id, nombre, tipo, created_at")
     .order("created_at", { ascending: false });
+  const admin = crearClienteAdmin();
   const { data: membresias } = await admin
     .from("membresias")
     .select("org_id")
