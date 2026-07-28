@@ -45,13 +45,18 @@ export async function crearOrgConAdmin(
   let perfilId: string | null = null;
   const { data: invitado, error: errorInvite } = await admin.auth.admin.inviteUserByEmail(email);
   if (errorInvite) {
+    const yaExiste =
+      errorInvite.status === 422 || /already.*registered/i.test(errorInvite.message);
+    if (!yaExiste) {
+      return { error: errorInvite.message };
+    }
     const { data: usuarios, error: errorList } = await admin.auth.admin.listUsers({ perPage: 1000 });
     if (errorList) {
-      return { error: "No pudimos invitar ni ubicar a ese usuario." };
+      return { error: "No pudimos ubicar al usuario existente." };
     }
     const existente = usuarios.users.find((u) => u.email === email);
     if (!existente) {
-      return { error: errorInvite.message };
+      return { error: "Ese email ya está registrado pero no lo pudimos encontrar." };
     }
     perfilId = existente.id;
   } else {
