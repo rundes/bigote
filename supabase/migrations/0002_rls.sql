@@ -31,6 +31,22 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- security definer para evitar recursión RLS: las policies de
+-- proyectos/proyecto_miembros/tareas no deben consultarse unas a otras
+-- directamente (eso genera "infinite recursion detected in policy").
+create or replace function public.es_miembro_del_proyecto(proyecto uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from proyecto_miembros pm
+    where pm.proyecto_id = proyecto and pm.perfil_id = auth.uid()
+  );
+$$;
+
+create or replace function public.org_del_proyecto(proyecto uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select org_id from proyectos where id = proyecto;
+$$;
+
 alter table perfiles enable row level security;
 alter table super_admins enable row level security;
 alter table organizaciones enable row level security;
@@ -76,33 +92,23 @@ create policy membresias_admin on membresias for all using (tiene_permiso(org_id
 
 create policy proyectos_select on proyectos for select using (
   tiene_permiso(org_id, 'proyectos') or tiene_permiso(org_id, 'admin')
-  or exists (select 1 from proyecto_miembros pm where pm.proyecto_id = proyectos.id and pm.perfil_id = auth.uid())
+  or es_miembro_del_proyecto(id)
 );
 create policy proyectos_write on proyectos for all using (tiene_permiso(org_id, 'proyectos'));
 
 create policy proyecto_miembros_select on proyecto_miembros for select using (
-  exists (select 1 from proyectos p where p.id = proyecto_id and es_miembro(p.org_id))
+  es_miembro(org_del_proyecto(proyecto_id))
 );
 create policy proyecto_miembros_write on proyecto_miembros for all using (
-  exists (select 1 from proyectos p where p.id = proyecto_id and tiene_permiso(p.org_id, 'proyectos'))
+  tiene_permiso(org_del_proyecto(proyecto_id), 'proyectos')
 );
 
 -- tareas: solo miembros del proyecto (spec §4); escritura fina (tomar/completar) se refina en fase 2
 create policy tareas_select on tareas for select using (
-  exists (
-    select 1 from proyecto_miembros pm
-    where pm.proyecto_id = tareas.proyecto_id and pm.perfil_id = auth.uid()
-  ) or exists (
-    select 1 from proyectos p where p.id = tareas.proyecto_id and tiene_permiso(p.org_id, 'admin')
-  )
+  es_miembro_del_proyecto(proyecto_id) or tiene_permiso(org_del_proyecto(proyecto_id), 'admin')
 );
 create policy tareas_write on tareas for all using (
-  exists (
-    select 1 from proyecto_miembros pm
-    where pm.proyecto_id = tareas.proyecto_id and pm.perfil_id = auth.uid()
-  ) or exists (
-    select 1 from proyectos p where p.id = tareas.proyecto_id and tiene_permiso(p.org_id, 'admin')
-  )
+  es_miembro_del_proyecto(proyecto_id) or tiene_permiso(org_del_proyecto(proyecto_id), 'admin')
 );
 
 create policy clientes_select on clientes for select using (es_miembro(org_id));
