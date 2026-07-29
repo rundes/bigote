@@ -333,16 +333,16 @@ async function main() {
     porcentaje_propietaria: 60,
   });
 
-  const salaNorte = await upsertSala(casaDelta.id, "Sala Norte", "publica");
-  const salaSur = await upsertSala(casaDelta.id, "Sala Sur", "publica");
-  const estudio = await upsertSala(casaDelta.id, "Estudio", "privada");
+  await upsertSala(casaDelta.id, "Sala Norte", "publica");
+  await upsertSala(casaDelta.id, "Sala Sur", "publica");
+  await upsertSala(casaDelta.id, "Estudio", "privada");
 
   // Planes de Fundación Delta
-  const planGratuito = await upsertPlan(fundacionDelta.id, "Gratuito", {
+  await upsertPlan(fundacionDelta.id, "Gratuito", {
     gratuito: true,
     precio_hora: 0,
   });
-  const planPorHora = await upsertPlan(fundacionDelta.id, "Pago por hora", {
+  await upsertPlan(fundacionDelta.id, "Pago por hora", {
     gratuito: false,
     precio_hora: 8000,
   });
