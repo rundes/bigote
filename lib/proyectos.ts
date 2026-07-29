@@ -26,7 +26,7 @@ type ProyectoListaFila = {
   id: string;
   nombre: string;
   estado: string;
-  proyecto_miembros: { count: number }[] | { count: number } | null;
+  proyecto_miembros: { perfil_id: string }[] | null;
 };
 
 export async function listarProyectos(
@@ -34,9 +34,13 @@ export async function listarProyectos(
 ): Promise<{ id: string; nombre: string; estado: string; miembros: number; pendientes: number }[]> {
   const supabase = await crearClienteServidor();
 
+  // Nota: `proyecto_miembros(count)` requiere el toggle de "aggregate
+  // functions" de PostgREST (apagado por defecto) y no se puede dar por
+  // sentado sin verificar en el proyecto hosted; por eso se trae el embed
+  // plano (filas, no agregado) y se cuenta en JS, igual que "pendientes".
   const { data: filas } = await supabase
     .from("proyectos")
-    .select("id, nombre, estado, proyecto_miembros(count)")
+    .select("id, nombre, estado, proyecto_miembros(perfil_id)")
     .eq("org_id", orgId)
     .returns<ProyectoListaFila[]>();
   const proyectos = filas ?? [];
@@ -64,7 +68,7 @@ export async function listarProyectos(
       id: p.id,
       nombre: p.nombre,
       estado: p.estado,
-      miembros: primero(p.proyecto_miembros)?.count ?? 0,
+      miembros: (p.proyecto_miembros ?? []).length,
       pendientes: pendientesPorProyecto.get(p.id) ?? 0,
     }))
     .sort((a, b) => {

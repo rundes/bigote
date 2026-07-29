@@ -163,24 +163,28 @@ export async function crearTarea(proyectoId: string, formData: FormData): Promis
   return {};
 }
 
-export async function borrarTarea(tareaId: string): Promise<Resultado> {
-  const supabase = await crearClienteServidor();
-  const { data: tarea } = await supabase
-    .from("tareas")
-    .select("proyecto_id, proyectos(org_id)")
-    .eq("id", tareaId)
-    .maybeSingle();
-  if (!tarea) return { error: "La tarea no existe." };
-  const proyectoInfo = tarea.proyectos as { org_id: string }[] | { org_id: string } | null;
-  const orgId = Array.isArray(proyectoInfo) ? proyectoInfo[0]?.org_id : proyectoInfo?.org_id;
-  if (!orgId) return { error: "La tarea no existe." };
+export async function borrarTarea(
+  tareaId: string,
+  orgId: string,
+  proyectoId: string
+): Promise<Resultado> {
   const guard = await verificarGestion(orgId);
   if (guard) return guard;
 
-  const { error } = await supabase.from("tareas").delete().eq("id", tareaId);
+  // Sin pre-lookup: quien gestiona proyectos puede no ser miembro de este
+  // proyecto en particular, y `tareas_select` (RLS) solo deja ver tareas a
+  // miembros del proyecto o admin — un select previo devolvería "no existe"
+  // para un caso válido. `tareas_gestion` sí autoriza el delete directamente
+  // (permiso proyectos/admin en la org), así que se ejecuta sin lectura previa.
+  const supabase = await crearClienteServidor();
+  const { error } = await supabase
+    .from("tareas")
+    .delete()
+    .eq("id", tareaId)
+    .eq("proyecto_id", proyectoId);
   if (error) return { error: error.message };
 
-  revalidarProyectos(orgId, tarea.proyecto_id);
+  revalidarProyectos(orgId, proyectoId);
   return {};
 }
 
