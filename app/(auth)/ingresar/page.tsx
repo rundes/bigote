@@ -1,6 +1,14 @@
 import { FormIngreso } from "./FormIngreso";
 
-export default function PaginaIngresar() {
+export default async function PaginaIngresar({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const errorInicial =
+    error === "enlace" ? "El enlace venció o ya se usó. Pedí uno nuevo." : null;
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-fondo px-4">
       <div className="w-full max-w-sm">
@@ -10,7 +18,7 @@ export default function PaginaIngresar() {
             Gestión de tu organización
           </p>
         </div>
-        <FormIngreso />
+        <FormIngreso errorInicial={errorInicial} />
       </div>
     </main>
   );

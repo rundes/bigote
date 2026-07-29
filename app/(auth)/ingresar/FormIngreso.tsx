@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 
-export function FormIngreso() {
+export function FormIngreso({ errorInicial }: { errorInicial?: string | null }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(errorInicial ?? null);
   const [enlaceEnviado, setEnlaceEnviado] = useState(false);
   const [cargando, setCargando] = useState<"google" | "password" | "magico" | null>(null);
 
@@ -95,24 +95,36 @@ export function FormIngreso() {
       </div>
 
       <form onSubmit={entrarConPassword} className="flex flex-col gap-3">
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          placeholder="tu@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
-        />
-        <input
-          type="password"
-          required
-          autoComplete="current-password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
-        />
+        <div className="flex flex-col gap-1">
+          <label htmlFor="email" className="text-[13px] text-tinta-suave">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="tu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="password" className="text-[13px] text-tinta-suave">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
+          />
+        </div>
         <button
           type="submit"
           disabled={cargando !== null}
