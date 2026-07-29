@@ -43,7 +43,9 @@ export async function crearOrgConAdmin(
   const admin = crearClienteAdmin();
 
   let perfilId: string | null = null;
-  const { data: invitado, error: errorInvite } = await admin.auth.admin.inviteUserByEmail(email);
+  const { data: invitado, error: errorInvite } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/auth/confirm`,
+  });
   if (errorInvite) {
     const yaExiste =
       errorInvite.status === 422 || /already.*registered/i.test(errorInvite.message);

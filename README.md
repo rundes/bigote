@@ -30,6 +30,7 @@ App web (Next.js) para que una organización chica reemplace planillas y cuadern
    NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
    SUPABASE_SECRET_KEY=sb_secret_...
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
    ```
 
 4. **Aplicar las migraciones** (`supabase/migrations/0001` a `0003`: esquema, RLS + helpers, función `crear_organizacion`). Dos formas, cualquiera de las dos deja el proyecto igual:
@@ -88,6 +89,7 @@ Importar el repo en Vercel y configurar estas variables de entorno (mismas que e
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SECRET_KEY`
+- `NEXT_PUBLIC_SITE_URL` (URL pública de la app; en Vercel, `https://<tu-dominio>`)
 
 Después de desplegar, agregá la URL de producción en *Auth → URL Configuration → Redirect URLs* del proyecto Supabase (ver sección siguiente).
 
@@ -103,12 +105,18 @@ El login admite Google, pero requiere configuración manual (no se hace por cód
 
 2. **Supabase Dashboard → Auth → Providers → Google**: habilitar el provider y cargar el *Client ID* y *Client Secret* del OAuth client creado en el paso anterior.
 
-3. **Supabase Dashboard → Auth → URL Configuration → Redirect URLs**: agregar las URLs de callback de la app:
+3. **Supabase Dashboard → Auth → URL Configuration → Site URL**: configurar la URL desplegada de la app (por ejemplo `https://<tu-dominio-de-vercel>`). Supabase usa este valor para armar los enlaces de los emails (invitación, magic link, recuperación).
+
+4. **Supabase Dashboard → Auth → URL Configuration → Redirect URLs**: agregar las URLs de callback de la app:
 
    - `http://localhost:3000/auth/callback` (desarrollo)
+   - `http://localhost:3000/auth/confirm` (desarrollo)
    - `https://<tu-dominio-de-vercel>/auth/callback` (producción, una vez desplegada)
+   - `https://<tu-dominio-de-vercel>/auth/confirm` (producción, una vez desplegada)
 
 Si el provider de Google no está configurado, el botón "Continuá con Google" en `/ingresar` muestra el error correspondiente sin romper el resto del formulario (email/contraseña y enlace mágico funcionan igual).
+
+Si el enlace de una invitación venció o ya se usó, la persona invitada puede pedir uno nuevo con "Mandame un enlace mágico" en `/ingresar`, usando el mismo email (fallback, no requiere que un admin la vuelva a invitar).
 
 ## Estructura de carpetas
 
