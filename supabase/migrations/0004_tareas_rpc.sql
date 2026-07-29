@@ -28,8 +28,10 @@ begin
   select pr.org_id, t.asignado_a into v_org, v_asignado
   from tareas t join proyectos pr on pr.id = t.proyecto_id where t.id = tarea;
   if v_org is null then raise exception 'La tarea no existe'; end if;
-  if not (v_asignado = auth.uid() or tiene_permiso(v_org, 'admin')) then
-    raise exception 'Solo la persona asignada (o admin) puede marcarla hecha';
+  if v_asignado is null or v_asignado <> auth.uid() then
+    if not tiene_permiso(v_org, 'admin') then
+      raise exception 'Solo la persona asignada (o admin) puede marcarla hecha';
+    end if;
   end if;
   update tareas set estado = 'hecha', completada_por = auth.uid(), completada_at = now()
   where id = tarea and estado <> 'hecha';
@@ -64,9 +66,24 @@ create policy tareas_gestion on tareas for all using (
 );
 
 -- Endurecimiento diferido del review de fase 1
-revoke execute on function public.org_del_proyecto(uuid) from anon;
-revoke execute on function public.es_miembro_del_proyecto(uuid) from anon;
-revoke execute on function public.tomar_tarea(uuid) from anon;
-revoke execute on function public.soltar_tarea(uuid) from anon;
-revoke execute on function public.completar_tarea(uuid) from anon;
-revoke execute on function public.track_record(uuid, date, date, uuid) from anon;
+-- Las funciones nacen con EXECUTE otorgado a PUBLIC (comportamiento default de
+-- Postgres); `revoke ... from anon` por sí solo no alcanza porque el grant a
+-- PUBLIC sigue vigente. Hay que revocar de PUBLIC (y anon, redundante pero
+-- explícito) y re-otorgar solo a authenticated/service_role.
+revoke execute on function public.org_del_proyecto(uuid) from public, anon;
+grant execute on function public.org_del_proyecto(uuid) to authenticated, service_role;
+
+revoke execute on function public.es_miembro_del_proyecto(uuid) from public, anon;
+grant execute on function public.es_miembro_del_proyecto(uuid) to authenticated, service_role;
+
+revoke execute on function public.tomar_tarea(uuid) from public, anon;
+grant execute on function public.tomar_tarea(uuid) to authenticated, service_role;
+
+revoke execute on function public.soltar_tarea(uuid) from public, anon;
+grant execute on function public.soltar_tarea(uuid) to authenticated, service_role;
+
+revoke execute on function public.completar_tarea(uuid) from public, anon;
+grant execute on function public.completar_tarea(uuid) to authenticated, service_role;
+
+revoke execute on function public.track_record(uuid, date, date, uuid) from public, anon;
+grant execute on function public.track_record(uuid, date, date, uuid) to authenticated, service_role;
