@@ -71,6 +71,7 @@ El seed crea estos usuarios (password para todos: `demo1234`):
 | `admin@demo.test` | Administración (+ super admin de plataforma) | Fundación Delta y Gestora Sur |
 | `coordi@demo.test` | Coordinación | Fundación Delta |
 | `ope@demo.test` | Operaciones | Fundación Delta |
+| `gestora@demo.test` | Operaciones | Gestora Sur (solamente) |
 
 Además el seed crea un edificio co-gestionado ("Casa Delta", Fundación Delta como propietaria y Gestora Sur como gestora, reparto de ingresos 60/40), salas, planes de reserva, dos proyectos con tareas y clientes.
 

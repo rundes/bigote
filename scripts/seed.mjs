@@ -279,6 +279,7 @@ async function main() {
   const admin = await upsertUser("admin@demo.test", "Ana Admin");
   const coordi = await upsertUser("coordi@demo.test", "Camila Coordinadora");
   const ope = await upsertUser("ope@demo.test", "Omar Operaciones");
+  const gestora = await upsertUser("gestora@demo.test", "Gabriela Gestora");
 
   // 2. Orgs
   const fundacionDelta = await upsertOrganizacion("Fundación Delta", "asociacion_civil");
@@ -313,14 +314,17 @@ async function main() {
 
   const rolAdminSur = await upsertRol(gestoraSur.id, "Administración", permisosAdministracion);
   await upsertRol(gestoraSur.id, "Coordinación", permisosCoordinacion);
-  await upsertRol(gestoraSur.id, "Operaciones", permisosOperaciones);
+  const rolOpeSur = await upsertRol(gestoraSur.id, "Operaciones", permisosOperaciones);
 
   // Membresías: admin -> Administración en ambas orgs; coordi -> Coordinación
-  // y ope -> Operaciones en Fundación Delta.
+  // y ope -> Operaciones en Fundación Delta; gestora -> Operaciones, solo en
+  // Gestora Sur (para probar RLS de co-gestión con un usuario que no es
+  // miembro de la org propietaria).
   await upsertMembresia(fundacionDelta.id, admin.id, rolAdminDelta.id);
   await upsertMembresia(gestoraSur.id, admin.id, rolAdminSur.id);
   await upsertMembresia(fundacionDelta.id, coordi.id, rolCoordiDelta.id);
   await upsertMembresia(fundacionDelta.id, ope.id, rolOpeDelta.id);
+  await upsertMembresia(gestoraSur.id, gestora.id, rolOpeSur.id);
 
   // super_admins: admin
   await upsertSuperAdmin(admin.id);
@@ -413,7 +417,12 @@ async function main() {
 
   const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   assertNoError(usersError, "listUsers (resumen)");
-  const demoEmails = new Set(["admin@demo.test", "coordi@demo.test", "ope@demo.test"]);
+  const demoEmails = new Set([
+    "admin@demo.test",
+    "coordi@demo.test",
+    "ope@demo.test",
+    "gestora@demo.test",
+  ]);
   counts.usuarios = usersData.users.filter((u) => demoEmails.has(u.email)).length;
 
   console.log("Seed de demo completo.");
