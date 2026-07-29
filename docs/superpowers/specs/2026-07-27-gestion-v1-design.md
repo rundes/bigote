@@ -135,6 +135,7 @@ Criterios de aceptación:
 - [ ] Miembro de la org gestora opera salas y reservas del edificio co-gestionado; miembro de una tercera org, no (test RLS).
 - [ ] El costo mostrado antes de confirmar coincide con la suma de movimientos generados.
 - [ ] Miembro sin permiso `espacios` puede reservar para sí y cancelar la propia, pero no cancelar ajenas ni editar salas.
+- [ ] (Fase 2, precondición del trigger de finanzas) Validar en DB que `plan_id` y `cliente_id` de una reserva pertenecen a la org propietaria del edificio, y que `costo` se calcula en el servidor, nunca del cliente.
 
 ### 5.4 Finanzas (P0)
 
