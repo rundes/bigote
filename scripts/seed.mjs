@@ -389,6 +389,45 @@ async function main() {
     asignado_a: null,
   });
 
+  // Historia de tareas ya completadas, para poblar el track record: 2 por
+  // coordi (dif 3 y 5) y 2 por ope (dif 2 y 4), todas en "Sitio nuevo".
+  function haceDias(n) {
+    return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  await upsertTarea(proyectoSitio.id, "Relevar contenido viejo", {
+    descripcion: "Revisar el contenido del sitio anterior a migrar.",
+    dificultad: 3,
+    estado: "hecha",
+    asignado_a: coordi.id,
+    completada_por: coordi.id,
+    completada_at: haceDias(10),
+  });
+  await upsertTarea(proyectoSitio.id, "Migrar DNS", {
+    descripcion: "Apuntar el dominio al nuevo hosting.",
+    dificultad: 5,
+    estado: "hecha",
+    asignado_a: coordi.id,
+    completada_por: coordi.id,
+    completada_at: haceDias(40),
+  });
+  await upsertTarea(proyectoSitio.id, "Backup del sitio anterior", {
+    descripcion: "Respaldar archivos y base de datos del sitio viejo.",
+    dificultad: 2,
+    estado: "hecha",
+    asignado_a: ope.id,
+    completada_por: ope.id,
+    completada_at: haceDias(5),
+  });
+  await upsertTarea(proyectoSitio.id, "Inventario de plugins", {
+    descripcion: "Listar los plugins en uso del sitio anterior.",
+    dificultad: 4,
+    estado: "hecha",
+    asignado_a: ope.id,
+    completada_por: ope.id,
+    completada_at: haceDias(70),
+  });
+
   // Clientes de Fundación Delta
   await upsertCliente(fundacionDelta.id, "Estudio Sur", "Lucía Fernández · lucia@estudiosur.test · 11 5555-1234");
   await upsertCliente(fundacionDelta.id, "Colectivo Raíz", "Nicolás Gómez · contacto@colectivoraiz.test · 11 5555-5678");
