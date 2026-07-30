@@ -2,22 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, ListChecks, DoorOpen, Wallet, Menu, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { SwitcherOrg } from "@/componentes/shell/SwitcherOrg";
-import type { ContextoOrg, Permisos } from "@/lib/org";
-
-const ITEMS: {
-  href: string;
-  label: string;
-  Icon: typeof Sun;
-  permiso: keyof Permisos | null;
-}[] = [
-  { href: "", label: "Hoy", Icon: Sun, permiso: null },
-  { href: "/tareas", label: "Tareas", Icon: ListChecks, permiso: "proyectos" },
-  { href: "/espacios", label: "Espacios", Icon: DoorOpen, permiso: null },
-  { href: "/finanzas", label: "Finanzas", Icon: Wallet, permiso: "finanzas" },
-  { href: "/mas", label: "Más", Icon: Menu, permiso: null },
-];
+import { ITEMS_NAV } from "@/lib/nav";
+import type { ContextoOrg } from "@/lib/org";
 
 export function SidebarEscritorio({
   orgId,
@@ -29,8 +17,9 @@ export function SidebarEscritorio({
   orgs: { id: string; nombre: string }[];
 }) {
   const pathname = usePathname();
-  const base = `/o/${orgId}`;
-  const visibles = ITEMS.filter((item) => !item.permiso || contexto.permisos[item.permiso]);
+  const visibles = ITEMS_NAV.filter(
+    (item) => item.permiso === null || contexto.permisos[item.permiso]
+  );
 
   return (
     <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-linea lg:bg-panel lg:px-3 lg:py-4">
@@ -39,19 +28,19 @@ export function SidebarEscritorio({
       </div>
 
       <nav className="mt-4 flex flex-1 flex-col gap-1">
-        {visibles.map(({ href, label, Icon }) => {
-          const destino = `${base}${href}`;
+        {visibles.map(({ href, etiqueta, icono: Icon }) => {
+          const destino = href(orgId);
           const activo = pathname === destino;
           return (
             <Link
-              key={href}
+              key={destino}
               href={destino}
               className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
                 activo ? "text-acento" : "text-tinta hover:bg-linea/40"
               }`}
             >
               <Icon size={20} strokeWidth={1.75} />
-              {label}
+              {etiqueta}
             </Link>
           );
         })}
