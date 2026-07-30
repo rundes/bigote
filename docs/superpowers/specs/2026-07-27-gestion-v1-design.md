@@ -115,9 +115,9 @@ Criterios de aceptación:
 - Track record por persona: completadas, dificultad acumulada y promedio; filtros por proyecto y período (mes/trimestre/histórico).
 
 Criterios de aceptación:
-- [ ] Tarea del pool tomada deja de estar disponible para el resto (tiempo real o refresh).
-- [ ] Track record se calcula sobre `completada_por`, no `asignado_a`.
-- [ ] Sin permiso `equipo` no se ve el track record ajeno.
+- [x] Tarea del pool tomada deja de estar disponible para el resto (tiempo real o refresh).
+- [x] Track record se calcula sobre `completada_por`, no `asignado_a`.
+- [x] Sin permiso `equipo` no se ve el track record ajeno.
 
 ### 5.3 Espacios (P0)
 
