@@ -205,4 +205,70 @@ describe("tareas: gestión directa y transiciones vía RPC", () => {
     expect(tareaFinal!.estado).toBe("hecha");
     expect(tareaFinal!.completada_por).toBe(opeId);
   });
+
+  it("soltar_tarea: coordi no puede soltar una tarea en_curso que tiene ope", async () => {
+    const { data: tarea, error: errorTarea } = await clienteServicio
+      .from("tareas")
+      .insert({
+        proyecto_id: sitioId,
+        titulo: "[test-f2] tarea soltar ajena",
+        dificultad: 1,
+        asignado_a: opeId,
+        estado: "en_curso",
+      })
+      .select()
+      .single();
+    expect(errorTarea).toBeNull();
+    const tareaId = tarea!.id;
+
+    const { error: errorCoordi } = await coordi.rpc("soltar_tarea", { tarea: tareaId });
+    expect(errorCoordi).not.toBeNull();
+    expect(errorCoordi!.message).toContain("No la podés soltar");
+
+    const { data: sinSoltar } = await clienteServicio
+      .from("tareas")
+      .select("estado, asignado_a")
+      .eq("id", tareaId)
+      .single();
+    expect(sinSoltar!.estado).toBe("en_curso");
+    expect(sinSoltar!.asignado_a).toBe(opeId);
+  });
+
+  it("soltar_tarea: ope (dueño) puede soltarla al pool; coordi puede volver a tomarla", async () => {
+    const { data: tarea, error: errorTarea } = await clienteServicio
+      .from("tareas")
+      .insert({
+        proyecto_id: sitioId,
+        titulo: "[test-f2] tarea soltar propia",
+        dificultad: 1,
+        asignado_a: opeId,
+        estado: "en_curso",
+      })
+      .select()
+      .single();
+    expect(errorTarea).toBeNull();
+    const tareaId = tarea!.id;
+
+    const { error: errorOpe } = await ope.rpc("soltar_tarea", { tarea: tareaId });
+    expect(errorOpe).toBeNull();
+
+    const { data: sueltaEnPool } = await clienteServicio
+      .from("tareas")
+      .select("estado, asignado_a")
+      .eq("id", tareaId)
+      .single();
+    expect(sueltaEnPool!.estado).toBe("pendiente");
+    expect(sueltaEnPool!.asignado_a).toBeNull();
+
+    const { error: errorTomarCoordi } = await coordi.rpc("tomar_tarea", { tarea: tareaId });
+    expect(errorTomarCoordi).toBeNull();
+
+    const { data: tomadaPorCoordi } = await clienteServicio
+      .from("tareas")
+      .select("estado, asignado_a")
+      .eq("id", tareaId)
+      .single();
+    expect(tomadaPorCoordi!.estado).toBe("en_curso");
+    expect(tomadaPorCoordi!.asignado_a).toBe(coordiId);
+  });
 });
