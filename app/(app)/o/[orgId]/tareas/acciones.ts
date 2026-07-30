@@ -129,6 +129,17 @@ export async function quitarMiembro(proyectoId: string, perfilId: string): Promi
     .eq("perfil_id", perfilId);
   if (error) return { error: error.message };
 
+  // Al sacar a alguien del equipo, sus tareas no terminadas de este proyecto
+  // vuelven al pool (pendiente, sin asignar) en vez de quedar "asignadas" a
+  // quien ya no puede completarlas.
+  const { error: errorLimpieza } = await supabase
+    .from("tareas")
+    .update({ estado: "pendiente", asignado_a: null })
+    .eq("proyecto_id", proyectoId)
+    .eq("asignado_a", perfilId)
+    .neq("estado", "hecha");
+  if (errorLimpieza) return { error: errorLimpieza.message };
+
   revalidarProyectos(orgId, proyectoId);
   return {};
 }
@@ -150,6 +161,17 @@ export async function crearTarea(proyectoId: string, formData: FormData): Promis
   const asignado_a = asignadoRaw ? asignadoRaw : null;
 
   const supabase = await crearClienteServidor();
+
+  if (asignado_a) {
+    const { data: membresia } = await supabase
+      .from("proyecto_miembros")
+      .select("perfil_id")
+      .eq("proyecto_id", proyectoId)
+      .eq("perfil_id", asignado_a)
+      .maybeSingle();
+    if (!membresia) return { error: "Esa persona no es miembro del proyecto." };
+  }
+
   const { error } = await supabase.from("tareas").insert({
     proyecto_id: proyectoId,
     titulo,

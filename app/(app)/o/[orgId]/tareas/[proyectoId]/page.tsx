@@ -47,14 +47,26 @@ export default async function PaginaProyecto({
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-tinta">Pool</h2>
-          {puedeGestionar && <SheetNuevaTarea proyectoId={proyecto.id} miembros={miembrosOrg} />}
+          {puedeGestionar && (
+            <SheetNuevaTarea proyectoId={proyecto.id} miembros={proyecto.miembros} />
+          )}
         </div>
         {proyecto.pool.length === 0 ? (
           <p className="text-sm text-tinta-suave">No hay tareas en el pool.</p>
         ) : (
           <div className="flex flex-col">
             {proyecto.pool.map((t) => (
-              <FilaTarea key={t.id} tarea={t} accion="tomar" orgId={orgId} proyectoId={proyecto.id} />
+              <FilaTarea
+                key={t.id}
+                tarea={t}
+                accion={
+                  proyecto.miembros.some((m) => m.perfil_id === contexto.perfilId)
+                    ? "tomar"
+                    : undefined
+                }
+                orgId={orgId}
+                proyectoId={proyecto.id}
+              />
             ))}
           </div>
         )}
