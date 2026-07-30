@@ -54,15 +54,24 @@ export default async function PaginaEquipo({
   if (!contexto) redirect("/");
 
   const periodo: Periodo = esPeriodo(sp.periodo) ? sp.periodo : "mes";
-  const proyectoId = sp.proyecto ?? null;
+
+  // `listarProyectos` primero: valida el searchParam contra la lista completa
+  // (incluidos archivados, para que un link directo a un proyecto archivado
+  // siga funcionando) antes de pasarlo a la RPC. Los chips igual solo
+  // muestran los activos.
+  const proyectos = await listarProyectos(orgId);
+  const proyectoIdCrudo = sp.proyecto ?? null;
+  const proyectoId =
+    proyectoIdCrudo && proyectos.some((p) => p.id === proyectoIdCrudo) ? proyectoIdCrudo : null;
 
   // Cliente de sesión (nunca admin): la RPC hace su propio recorte de
   // privacidad server-side según el permiso `equipo` del usuario logueado.
   const supabase = await crearClienteServidor();
-  const [{ data: filas }, proyectos] = await Promise.all([
-    supabase.rpc("track_record", { org: orgId, desde: calcularDesde(periodo), proyecto: proyectoId }),
-    listarProyectos(orgId),
-  ]);
+  const { data: filas, error } = await supabase.rpc("track_record", {
+    org: orgId,
+    desde: calcularDesde(periodo),
+    proyecto: proyectoId,
+  });
 
   // Sin tipos generados de Supabase en el proyecto, el builder de `.rpc()`
   // no infiere el shape de la tabla devuelta (a diferencia de `.from().select()`
@@ -78,7 +87,9 @@ export default async function PaginaEquipo({
 
       <FiltrosTrackRecord orgId={orgId} periodo={periodo} proyectoId={proyectoId} proyectos={activos} />
 
-      {personas.length === 0 ? (
+      {error ? (
+        <p className="text-sm text-tinta-suave">No pudimos cargar el track record. Probá de nuevo.</p>
+      ) : personas.length === 0 ? (
         <p className="text-sm text-tinta-suave">Nada completado en este período.</p>
       ) : (
         <div className="flex flex-col">

@@ -49,8 +49,8 @@ language sql stable security definer set search_path = public as $$
   join perfiles p on p.id = t.completada_por
   where pr.org_id = track_record.org
     and t.estado = 'hecha' and t.completada_por is not null
-    and (desde is null or t.completada_at >= desde)
-    and (hasta is null or t.completada_at < hasta + 1)
+    and (desde is null or t.completada_at >= (desde::timestamp at time zone 'America/Argentina/Buenos_Aires'))
+    and (hasta is null or t.completada_at < ((hasta + 1)::timestamp at time zone 'America/Argentina/Buenos_Aires'))
     and (proyecto is null or t.proyecto_id = proyecto)
     and (tiene_permiso(track_record.org, 'equipo') or t.completada_por = auth.uid())
   group by p.id, p.nombre
