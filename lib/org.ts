@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { crearClienteServidor } from "@/lib/supabase/server";
 
 export type Permisos = {
@@ -18,7 +19,7 @@ function primero<T>(valor: T | T[] | null | undefined): T | undefined {
   return valor ?? undefined;
 }
 
-export async function obtenerContextoOrg(orgId: string): Promise<ContextoOrg | null> {
+async function _obtenerContextoOrg(orgId: string): Promise<ContextoOrg | null> {
   const supabase = await crearClienteServidor();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -38,7 +39,9 @@ export async function obtenerContextoOrg(orgId: string): Promise<ContextoOrg | n
   return { org, permisos: rol.permisos, perfilId: user.id };
 }
 
-export async function listarMisOrgs(): Promise<{ id: string; nombre: string }[]> {
+export const obtenerContextoOrg = cache(_obtenerContextoOrg);
+
+async function _listarMisOrgs(): Promise<{ id: string; nombre: string }[]> {
   const supabase = await crearClienteServidor();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
@@ -55,3 +58,5 @@ export async function listarMisOrgs(): Promise<{ id: string; nombre: string }[]>
     )
     .filter((org): org is { id: string; nombre: string } => Boolean(org));
 }
+
+export const listarMisOrgs = cache(_listarMisOrgs);

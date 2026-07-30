@@ -146,6 +146,7 @@ docs/superpowers/        specs y plan de la fase 1
 Este repo se construye por fases documentadas en `docs/superpowers/`:
 
 - Spec de producto y diseño: `docs/superpowers/specs/2026-07-27-gestion-v1-design.md`, `docs/superpowers/specs/2026-07-27-gestion-v1-ux-brief.md`
-- Plan de la fase 1 (esquema, RLS, seeds, auth, shell, tests, plataforma, este README): `docs/superpowers/plans/2026-07-27-fase1-base.md`
+- **Fase 1 — Base** (completa): esquema, RLS, seeds, auth, shell, tests, plataforma. Plan: `docs/superpowers/plans/2026-07-27-fase1-base.md`
+- **Fase 2 — Proyectos y tareas** (completa): CRUD de proyectos y tareas, pool + asignadas, track record por persona con filtros y privacidad. Criterios §5.2 verificados: pool atómico, track record sobre `completada_por`, privacidad de `equipo` en RLS.
 
-La fase 1 cubre la base: esquema completo, RLS, seeds, auth, shell multi-org con navegación por permisos, tests de RLS y panel de plataforma. Queda para fases siguientes, entre otras cosas, el trigger que genera movimientos financieros a partir de reservas.
+Próximas: fase 3 (Espacios: edificios, salas, media, reservas, co-gestión), fase 4 (Finanzas: ingresos/egresos, ámbitos, integración de reservas), fase 5 (Equipo/roles, pulido, deploy).

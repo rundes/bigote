@@ -43,7 +43,7 @@ export function SwitcherOrg({
       {abierto && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
-          <ul className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-lg border border-linea bg-superficie shadow-sm">
+          <ul className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-xl border border-linea bg-superficie shadow-sm">
             {orgs.map((org) => (
               <li key={org.id}>
                 <button
