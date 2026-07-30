@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { PipsDificultad } from "@/componentes/tareas/PipsDificultad";
-import { tomarTarea, completarTarea } from "@/app/(app)/o/[orgId]/tareas/acciones";
+import { BotonTomar } from "@/componentes/tareas/BotonTomar";
+import { BotonCompletar } from "@/componentes/tareas/BotonCompletar";
 
 export type AccionFilaTarea = "tomar" | "completar";
 
-// Botones simples (sin optimismo): Task 4 los reemplaza por BotonTomar/
-// BotonCompletar con useOptimistic + toast + undo, sin tocar esta interfaz.
 export function FilaTarea({
   tarea,
   accion,
@@ -24,27 +22,20 @@ export function FilaTarea({
   subtitulo?: string;
   tachada?: boolean;
 }) {
-  const router = useRouter();
-  const [pendiente, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  // "oculta": la fila desaparece del todo (optimismo de tomar, o tras el
+  // fade de completar). "saliendo": anima la fila mientras espera al
+  // servidor (solo completar) antes de ocultarla.
+  const [oculta, setOculta] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
 
-  function ejecutar() {
-    setError(null);
-    startTransition(async () => {
-      const resultado =
-        accion === "tomar"
-          ? await tomarTarea(tarea.id, orgId, proyectoId)
-          : await completarTarea(tarea.id, orgId, proyectoId);
-      if (resultado.error) {
-        setError(resultado.error);
-        return;
-      }
-      router.refresh();
-    });
-  }
+  if (oculta) return null;
 
   return (
-    <div className="flex flex-col gap-1 border-b border-linea py-2 last:border-b-0">
+    <div
+      className={`flex flex-col gap-1 border-b border-linea py-2 transition-all duration-200 ease-out last:border-b-0 motion-reduce:transition-none ${
+        saliendo ? "-translate-y-1 opacity-0" : "translate-y-0 opacity-100"
+      }`}
+    >
       <div className="flex min-h-11 items-center gap-3">
         <div className="flex flex-1 flex-col gap-0.5">
           <span
@@ -60,19 +51,25 @@ export function FilaTarea({
           </div>
         </div>
 
-        {accion && (
-          <button
-            type="button"
-            onClick={ejecutar}
-            disabled={pendiente}
-            className="flex h-11 shrink-0 items-center rounded-lg bg-acento px-3 text-sm font-medium text-acento-tinta transition hover:opacity-90 disabled:opacity-60"
-          >
-            {accion === "tomar" ? "Tomala" : "Marcá hecha"}
-          </button>
+        {accion === "tomar" && (
+          <BotonTomar
+            tareaId={tarea.id}
+            orgId={orgId}
+            proyectoId={proyectoId}
+            onOcultar={() => setOculta(true)}
+            onRestaurar={() => setOculta(false)}
+          />
+        )}
+        {accion === "completar" && (
+          <BotonCompletar
+            tareaId={tarea.id}
+            orgId={orgId}
+            proyectoId={proyectoId}
+            onAnimar={setSaliendo}
+            onOcultar={() => setOculta(true)}
+          />
         )}
       </div>
-
-      {error && <p className="text-xs text-peligro">{error}</p>}
     </div>
   );
 }
