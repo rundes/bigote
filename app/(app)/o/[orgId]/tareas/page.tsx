@@ -1,9 +1,31 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 import { obtenerContextoOrg } from "@/lib/org";
 import { listarProyectos, misTareas } from "@/lib/proyectos";
 import { FilaTarea } from "@/componentes/tareas/FilaTarea";
 import { SheetNuevoProyecto } from "@/componentes/proyectos/SheetNuevoProyecto";
+
+type Proyecto = Awaited<ReturnType<typeof listarProyectos>>[number];
+
+function FilaProyecto({ orgId, proyecto }: { orgId: string; proyecto: Proyecto }) {
+  return (
+    <Link
+      href={`/o/${orgId}/tareas/${proyecto.id}`}
+      className="flex min-h-11 items-center justify-between gap-3 border-b border-linea py-3 last:border-b-0"
+    >
+      <span
+        className={`text-sm ${proyecto.estado === "archivado" ? "text-tinta-suave" : "text-tinta"}`}
+      >
+        {proyecto.nombre}
+        {proyecto.estado === "archivado" && " (archivado)"}
+      </span>
+      <span className="shrink-0 text-xs text-tinta-suave">
+        {proyecto.pendientes} pendientes · {proyecto.miembros} personas
+      </span>
+    </Link>
+  );
+}
 
 export default async function PaginaTareas({
   params,
@@ -84,25 +106,33 @@ export default async function PaginaTareas({
             Todavía no hay proyectos. Creá el primero y sumá al equipo.
           </p>
         ) : (
-          <div className="flex flex-col">
-            {[...activos, ...archivados].map((p) => (
-              <Link
-                key={p.id}
-                href={`/o/${orgId}/tareas/${p.id}`}
-                className="flex min-h-11 items-center justify-between gap-3 border-b border-linea py-3 last:border-b-0"
-              >
-                <span
-                  className={`text-sm ${p.estado === "archivado" ? "text-tinta-suave" : "text-tinta"}`}
-                >
-                  {p.nombre}
-                  {p.estado === "archivado" && " (archivado)"}
-                </span>
-                <span className="shrink-0 text-xs text-tinta-suave">
-                  {p.pendientes} pendientes · {p.miembros} personas
-                </span>
-              </Link>
-            ))}
-          </div>
+          <>
+            {activos.length > 0 && (
+              <div className="flex flex-col">
+                {activos.map((p) => (
+                  <FilaProyecto key={p.id} orgId={orgId} proyecto={p} />
+                ))}
+              </div>
+            )}
+
+            {archivados.length > 0 && (
+              <details className="group">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-3 text-sm text-tinta-suave [&::-webkit-details-marker]:hidden">
+                  <ChevronRight
+                    size={20}
+                    strokeWidth={1.75}
+                    className="shrink-0 transition-transform group-open:rotate-90"
+                  />
+                  Archivados ({archivados.length})
+                </summary>
+                <div className="flex flex-col">
+                  {archivados.map((p) => (
+                    <FilaProyecto key={p.id} orgId={orgId} proyecto={p} />
+                  ))}
+                </div>
+              </details>
+            )}
+          </>
         )}
       </section>
     </div>

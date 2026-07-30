@@ -96,7 +96,7 @@ export function EquipoProyecto({
                     disabled={pendiente}
                     className="flex h-11 items-center rounded-lg px-3 text-sm text-peligro transition hover:bg-peligro/10 disabled:opacity-60"
                   >
-                    Quitar
+                    Quitá
                   </button>
                 </div>
               ))}
@@ -110,7 +110,7 @@ export function EquipoProyecto({
                 onChange={(evento) => setSeleccion(evento.target.value)}
                 className="h-11 flex-1 rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta focus:border-acento focus:outline-none"
               >
-                <option value="">Sumar al equipo…</option>
+                <option value="">Sumá al equipo…</option>
                 {disponibles.map((m) => (
                   <option key={m.perfil_id} value={m.perfil_id}>
                     {m.nombre}
@@ -121,7 +121,7 @@ export function EquipoProyecto({
                 type="button"
                 onClick={agregar}
                 disabled={pendiente || !seleccion}
-                aria-label="Sumar al equipo"
+                aria-label="Sumá al equipo"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-acento text-acento-tinta transition hover:opacity-90 disabled:opacity-60"
               >
                 <UserPlus size={20} strokeWidth={1.75} />
