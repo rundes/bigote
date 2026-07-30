@@ -3,6 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { clienteAdmin, clienteComo } from "./helpers";
 
 // Fila devuelta por la RPC track_record (ver supabase/migrations/0004_tareas_rpc.sql).
+//
+// Ejecución concurrente: este archivo es de solo lectura (no crea ni
+// modifica tareas), así que puede correr en paralelo con cualquier otro
+// archivo de tests/rls sin pisar datos.
 type FilaTrackRecord = {
   perfil_id: string;
   nombre: string;

@@ -15,7 +15,7 @@ export function clienteAdmin(): SupabaseClient {
 // una pequeña espera antes de darnos por vencidos.
 function esErrorDeDesfasajeDeReloj(mensaje: string): boolean {
   const m = mensaje.toLowerCase();
-  return m.includes("issued") || m.includes("clock") || m.includes("jwt");
+  return (m.includes("issued") && m.includes("future")) || m.includes("clock");
 }
 
 export async function clienteComo(email: string): Promise<SupabaseClient> {
