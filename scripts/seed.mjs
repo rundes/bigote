@@ -251,6 +251,48 @@ async function upsertTarea(proyectoId, titulo, fields) {
   return data;
 }
 
+// Completa dirección/descripcion de un edificio o sala solo si están vacías
+// (no pisa ediciones hechas desde la app).
+async function completarTextos(tabla, id, campos) {
+  const { data: fila, error: selError } = await supabase
+    .from(tabla)
+    .select("*")
+    .eq("id", id)
+    .single();
+  assertNoError(selError, `select ${tabla} ${id}`);
+
+  const cambios = {};
+  for (const [campo, valor] of Object.entries(campos)) {
+    if (!fila[campo]) cambios[campo] = valor;
+  }
+  if (Object.keys(cambios).length === 0) return;
+
+  const { error } = await supabase.from(tabla).update(cambios).eq("id", id);
+  assertNoError(error, `update ${tabla} ${id}`);
+}
+
+// Clave natural: sala + fecha + hora de inicio (fechas fijas futuras para
+// que el seed sea idempotente entre corridas en días distintos).
+async function upsertReserva(salaId, fecha, horaInicio, fields) {
+  const { data: existing, error: selError } = await supabase
+    .from("reservas")
+    .select("*")
+    .eq("sala_id", salaId)
+    .eq("fecha", fecha)
+    .eq("hora_inicio", horaInicio)
+    .maybeSingle();
+  assertNoError(selError, `select reservas ${fecha} ${horaInicio}h`);
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from("reservas")
+    .insert({ sala_id: salaId, fecha, hora_inicio: horaInicio, ...fields })
+    .select("*")
+    .single();
+  assertNoError(error, `insert reservas ${fecha} ${horaInicio}h`);
+  return data;
+}
+
 async function upsertCliente(orgId, nombre, contacto) {
   const { data: existing, error: selError } = await supabase
     .from("clientes")
@@ -337,18 +379,46 @@ async function main() {
     porcentaje_propietaria: 60,
   });
 
-  await upsertSala(casaDelta.id, "Sala Norte", "publica");
-  await upsertSala(casaDelta.id, "Sala Sur", "publica");
-  await upsertSala(casaDelta.id, "Estudio", "privada");
+  const salaNorte = await upsertSala(casaDelta.id, "Sala Norte", "publica");
+  const salaSur = await upsertSala(casaDelta.id, "Sala Sur", "publica");
+  const estudio = await upsertSala(casaDelta.id, "Estudio", "privada");
+
+  // Textos de fase 3 (solo si están vacíos: no pisa ediciones de la app)
+  await completarTextos("edificios", casaDelta.id, {
+    direccion: "Av. Rivadavia 1234, CABA",
+    descripcion:
+      "Casona reciclada de dos plantas con patio, a dos cuadras del subte. Salas luminosas para reuniones, talleres y trabajo tranquilo.",
+  });
+  await completarTextos("salas", salaNorte.id, {
+    descripcion: "Sala de reuniones para 8 personas, con proyector y pizarra.",
+  });
+  await completarTextos("salas", salaSur.id, {
+    descripcion: "Sala amplia para talleres de hasta 20 personas, sillas apilables.",
+  });
+  await completarTextos("salas", estudio.id, {
+    descripcion: "Estudio chico e insonorizado, ideal para grabar o para llamadas largas.",
+  });
 
   // Planes de Fundación Delta
-  await upsertPlan(fundacionDelta.id, "Gratuito", {
+  const planGratuito = await upsertPlan(fundacionDelta.id, "Gratuito", {
     gratuito: true,
     precio_hora: 0,
   });
-  await upsertPlan(fundacionDelta.id, "Pago por hora", {
+  const planPago = await upsertPlan(fundacionDelta.id, "Pago por hora", {
     gratuito: false,
     precio_hora: 8000,
+  });
+  await upsertPlan(fundacionDelta.id, "Comunidad", {
+    gratuito: true,
+    precio_hora: 0,
+    solo_salas_publicas: true,
+  });
+
+  // Plan de Gestora Sur: existe solo para verificar (tests de fase 3) que un
+  // plan de la org gestora NO aplica en un edificio cuya propietaria es otra.
+  await upsertPlan(gestoraSur.id, "Pago Sur", {
+    gratuito: false,
+    precio_hora: 5000,
   });
 
   // Proyectos de Fundación Delta
@@ -429,9 +499,27 @@ async function main() {
   });
 
   // Clientes de Fundación Delta
-  await upsertCliente(fundacionDelta.id, "Estudio Sur", "Lucía Fernández · lucia@estudiosur.test · 11 5555-1234");
+  const clienteEstudioSur = await upsertCliente(fundacionDelta.id, "Estudio Sur", "Lucía Fernández · lucia@estudiosur.test · 11 5555-1234");
   await upsertCliente(fundacionDelta.id, "Colectivo Raíz", "Nicolás Gómez · contacto@colectivoraiz.test · 11 5555-5678");
   await upsertCliente(fundacionDelta.id, "Marta Pérez", "Marta Pérez · marta.perez@demo.test · 11 5555-9012");
+
+  // Reservas demo (fechas fijas futuras; service role bypassa RLS — desde la
+  // app las reservas solo se crean vía RPC crear_reserva). Costos coherentes
+  // con el plan: Pago por hora $8000/h.
+  await upsertReserva(salaNorte.id, "2026-12-15", 10, {
+    plan_id: planPago.id,
+    cliente_id: clienteEstudioSur.id,
+    horas: 2,
+    costo: 16000,
+    creada_por: admin.id,
+  });
+  await upsertReserva(salaSur.id, "2026-12-15", 14, {
+    plan_id: planGratuito.id,
+    para_perfil_id: ope.id,
+    horas: 1,
+    costo: 0,
+    creada_por: ope.id,
+  });
 
   // 3. Resumen
   const counts = {};
@@ -445,6 +533,7 @@ async function main() {
     "proyectos",
     "tareas",
     "clientes",
+    "reservas",
   ];
   for (const table of tables) {
     const { count, error } = await supabase
@@ -476,6 +565,7 @@ async function main() {
   console.log(`  proyectos: ${counts.proyectos}`);
   console.log(`  tareas:    ${counts.tareas}`);
   console.log(`  clientes:  ${counts.clientes}`);
+  console.log(`  reservas:  ${counts.reservas}`);
 }
 
 main().catch((err) => {
