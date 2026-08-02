@@ -17,16 +17,14 @@ async function limpiarReservasAgosto2027(admin: SupabaseClient) {
   if (error) throw new Error(`No pude limpiar reservas de agosto 2027: ${error.message}`);
 }
 
-describe("reservas: permisos, solapamiento y checks", () => {
+describe("reservas: permisos, solapamiento y endurecimiento", () => {
   const admin = clienteAdmin();
   let ope: SupabaseClient;
   let coordi: SupabaseClient;
   let opeId: string;
-  let coordiId: string;
   let salaNorteId: string;
   let salaSurId: string;
   let planGratuitoId: string;
-  let clienteId: string;
 
   beforeAll(async () => {
     // Leftovers de una corrida previa que haya crasheado antes de su afterAll
@@ -39,10 +37,6 @@ describe("reservas: permisos, solapamiento y checks", () => {
     const { data: opeUser, error: opeUserError } = await ope.auth.getUser();
     if (opeUserError || !opeUser.user) throw new Error("No pude obtener el usuario ope");
     opeId = opeUser.user.id;
-
-    const { data: coordiUser, error: coordiUserError } = await coordi.auth.getUser();
-    if (coordiUserError || !coordiUser.user) throw new Error("No pude obtener el usuario coordi");
-    coordiId = coordiUser.user.id;
 
     const { data: edificio, error: edificioError } = await admin
       .from("edificios")
@@ -84,15 +78,6 @@ describe("reservas: permisos, solapamiento y checks", () => {
       .single();
     if (planError || !plan) throw new Error("No encontré el plan Gratuito");
     planGratuitoId = plan.id;
-
-    const { data: cliente, error: clienteError } = await admin
-      .from("clientes")
-      .select("id")
-      .eq("org_id", org.id)
-      .limit(1)
-      .single();
-    if (clienteError || !cliente) throw new Error("No encontré ningún cliente de Fundación Delta");
-    clienteId = cliente.id;
   });
 
   afterAll(async () => {
@@ -101,7 +86,99 @@ describe("reservas: permisos, solapamiento y checks", () => {
     await coordi.auth.signOut();
   });
 
-  it("(a) ope (permiso espacios) crea reserva para sí en Sala Norte -> OK [fecha 2027-08-01]", async () => {
+  it("(a) ope crea reserva para sí vía RPC -> OK y queda a su nombre [fecha 2027-08-01]", async () => {
+    const { data: reservaId, error } = await ope.rpc("crear_reserva", {
+      sala: salaNorteId,
+      plan: planGratuitoId,
+      dia: "2027-08-01",
+      inicio: 10,
+      duracion: 1,
+    });
+
+    expect(error).toBeNull();
+    expect(reservaId).toBeTruthy();
+
+    const { data: reserva } = await admin
+      .from("reservas")
+      .select("para_perfil_id, cliente_id, creada_por, costo")
+      .eq("id", reservaId as string)
+      .single();
+    expect(reserva!.para_perfil_id).toBe(opeId);
+    expect(reserva!.cliente_id).toBeNull();
+    expect(reserva!.creada_por).toBe(opeId);
+    expect(Number(reserva!.costo)).toBe(0);
+  });
+
+  it("(b) reserva solapada misma sala/fecha/franja -> 'Ese horario ya está reservado' [fecha 2027-08-02]", async () => {
+    const { error: errorBase } = await ope.rpc("crear_reserva", {
+      sala: salaNorteId,
+      plan: planGratuitoId,
+      dia: "2027-08-02",
+      inicio: 10,
+      duracion: 1,
+    });
+    expect(errorBase).toBeNull();
+
+    // Se solapa con la anterior (10-11): esta pide 10-12 en la misma sala/fecha.
+    const { error: errorSolapada } = await ope.rpc("crear_reserva", {
+      sala: salaNorteId,
+      plan: planGratuitoId,
+      dia: "2027-08-02",
+      inicio: 10,
+      duracion: 2,
+    });
+
+    expect(errorSolapada).not.toBeNull();
+    expect(errorSolapada!.message).toContain("Ese horario ya está reservado");
+  });
+
+  it("(c) coordi (sin espacios) reserva para sí -> OK; update directo -> 0 filas incluso para quien la creó [fecha 2027-08-03]", async () => {
+    const { error: errorCoordi } = await coordi.rpc("crear_reserva", {
+      sala: salaNorteId,
+      plan: planGratuitoId,
+      dia: "2027-08-03",
+      inicio: 9,
+      duracion: 1,
+    });
+    expect(errorCoordi).toBeNull();
+
+    const { data: reservaOpeId, error: errorOpe } = await ope.rpc("crear_reserva", {
+      sala: salaSurId,
+      plan: planGratuitoId,
+      dia: "2027-08-03",
+      inicio: 14,
+      duracion: 1,
+    });
+    expect(errorOpe).toBeNull();
+
+    // La migración 0005 eliminó las políticas de escritura directa: ni
+    // siquiera quien creó la reserva puede tocarla con un update (solo las
+    // RPCs mutan reservas). Encadenamos .select() para ver filas afectadas.
+    const { data: porCoordi, error: errorUpdateCoordi } = await coordi
+      .from("reservas")
+      .update({ horas: 2 })
+      .eq("id", reservaOpeId as string)
+      .select();
+    expect(errorUpdateCoordi).toBeNull();
+    expect(porCoordi).toEqual([]);
+
+    const { data: porOpe, error: errorUpdateOpe } = await ope
+      .from("reservas")
+      .update({ horas: 2 })
+      .eq("id", reservaOpeId as string)
+      .select();
+    expect(errorUpdateOpe).toBeNull();
+    expect(porOpe).toEqual([]);
+
+    const { data: sinTocar } = await admin
+      .from("reservas")
+      .select("horas")
+      .eq("id", reservaOpeId as string)
+      .single();
+    expect(sinTocar!.horas).toBe(1);
+  });
+
+  it("(d) insert directo en reservas -> denegado por RLS (sin política de insert) [fecha 2027-08-04]", async () => {
     const { data, error } = await ope
       .from("reservas")
       .insert({
@@ -109,121 +186,15 @@ describe("reservas: permisos, solapamiento y checks", () => {
         plan_id: planGratuitoId,
         cliente_id: null,
         para_perfil_id: opeId,
-        fecha: "2027-08-01",
+        fecha: "2027-08-04",
         hora_inicio: 10,
         horas: 1,
         costo: 0,
         creada_por: opeId,
       })
-      .select()
-      .single();
-
-    expect(error).toBeNull();
-    expect(data).not.toBeNull();
-    expect(data!.para_perfil_id).toBe(opeId);
-  });
-
-  it("(b) reserva solapada misma sala/fecha/franja -> error 23P01 (exclusion) [fecha 2027-08-02]", async () => {
-    const { error: errorBase } = await ope.from("reservas").insert({
-      sala_id: salaNorteId,
-      plan_id: planGratuitoId,
-      cliente_id: null,
-      para_perfil_id: opeId,
-      fecha: "2027-08-02",
-      hora_inicio: 10,
-      horas: 1,
-      costo: 0,
-      creada_por: opeId,
-    });
-    expect(errorBase).toBeNull();
-
-    // Se solapa con la anterior (10-11): esta pide 10-12 en la misma sala/fecha.
-    const { error: errorSolapada } = await ope.from("reservas").insert({
-      sala_id: salaNorteId,
-      plan_id: planGratuitoId,
-      cliente_id: null,
-      para_perfil_id: opeId,
-      fecha: "2027-08-02",
-      hora_inicio: 10,
-      horas: 2,
-      costo: 0,
-      creada_por: opeId,
-    });
-
-    expect(errorSolapada).not.toBeNull();
-    expect(errorSolapada!.code).toBe("23P01");
-  });
-
-  it("(c) coordi (sin espacios) crea reserva para sí -> OK; update de reserva ajena -> 0 filas afectadas [fecha 2027-08-03]", async () => {
-    const { error: errorCoordi } = await coordi.from("reservas").insert({
-      sala_id: salaNorteId,
-      plan_id: planGratuitoId,
-      cliente_id: null,
-      para_perfil_id: coordiId,
-      fecha: "2027-08-03",
-      hora_inicio: 9,
-      horas: 1,
-      costo: 0,
-      creada_por: coordiId,
-    });
-    expect(errorCoordi).toBeNull();
-
-    // Reserva "ajena" (para el update): la crea ope, en otra sala para no
-    // solapar con la de coordi de arriba.
-    const { data: reservaAjena, error: errorOpe } = await ope
-      .from("reservas")
-      .insert({
-        sala_id: salaSurId,
-        plan_id: planGratuitoId,
-        cliente_id: null,
-        para_perfil_id: opeId,
-        fecha: "2027-08-03",
-        hora_inicio: 14,
-        horas: 1,
-        costo: 0,
-        creada_por: opeId,
-      })
-      .select()
-      .single();
-    expect(errorOpe).toBeNull();
-    expect(reservaAjena).not.toBeNull();
-
-    // coordi (no es dueña, no tiene permiso espacios) intenta modificarla.
-    // Bajo RLS esto no da error: la fila queda fuera del USING de la policy
-    // de update, así que 0 filas son afectadas. Encadenamos .select() para
-    // poder comprobarlo (sin .select() supabase-js devuelve data: null).
-    const { data: actualizadas, error: errorUpdate } = await coordi
-      .from("reservas")
-      .update({ horas: 2 })
-      .eq("id", reservaAjena!.id)
       .select();
 
-    expect(errorUpdate).toBeNull();
-    expect(actualizadas).toEqual([]);
-
-    // Confirmamos con el admin que la reserva ajena no cambió.
-    const { data: sinTocar } = await admin
-      .from("reservas")
-      .select("horas")
-      .eq("id", reservaAjena!.id)
-      .single();
-    expect(sinTocar!.horas).toBe(1);
-  });
-
-  it("(d) reserva con cliente_id y para_perfil_id ambos seteados -> error de check [fecha 2027-08-04]", async () => {
-    const { error } = await ope.from("reservas").insert({
-      sala_id: salaNorteId,
-      plan_id: planGratuitoId,
-      cliente_id: clienteId,
-      para_perfil_id: opeId,
-      fecha: "2027-08-04",
-      hora_inicio: 10,
-      horas: 1,
-      costo: 0,
-      creada_por: opeId,
-    });
-
     expect(error).not.toBeNull();
-    expect(error!.code).toBe("23514");
+    expect(data).toBeNull();
   });
 });

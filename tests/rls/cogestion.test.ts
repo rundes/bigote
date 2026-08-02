@@ -86,34 +86,36 @@ describe("co-gestión: usuario solo-gestora y guard de crear_organizacion", () =
   });
 
   it("gestora crea una reserva para sí en Sala Norte con el plan Gratuito de Fundación Delta -> OK [fecha 2027-08-05]", async () => {
-    const { data, error } = await gestora
-      .from("reservas")
-      .insert({
-        sala_id: salaNorteId,
-        plan_id: planGratuitoId,
-        cliente_id: null,
-        para_perfil_id: gestoraId,
-        fecha: "2027-08-05",
-        hora_inicio: 11,
-        horas: 1,
-        costo: 0,
-        creada_por: gestoraId,
-      })
-      .select()
-      .single();
+    const { data: reservaId, error } = await gestora.rpc("crear_reserva", {
+      sala: salaNorteId,
+      plan: planGratuitoId,
+      dia: "2027-08-05",
+      inicio: 11,
+      duracion: 1,
+    });
 
     expect(error).toBeNull();
-    expect(data).not.toBeNull();
-    expect(data!.para_perfil_id).toBe(gestoraId);
+    expect(reservaId).toBeTruthy();
+
+    const { data: reserva } = await admin
+      .from("reservas")
+      .select("para_perfil_id, creada_por")
+      .eq("id", reservaId as string)
+      .single();
+    expect(reserva!.para_perfil_id).toBe(gestoraId);
+    expect(reserva!.creada_por).toBe(gestoraId);
   });
 
-  it("gestora no ve clientes ni movimientos de Fundación Delta (co-gestión solo expone espacios)", async () => {
+  it("gestora ve los clientes de Fundación Delta (autocompletar reservas) pero no sus movimientos", async () => {
+    // Migración 0006: los clientes aplicables a una reserva son los de la org
+    // propietaria del edificio, así que la co-gestión los expone (igual que
+    // los planes). El libro (movimientos) sigue siendo privado de cada org.
     const { data: clientes, error: errorClientes } = await gestora
       .from("clientes")
       .select("id")
       .eq("org_id", fundacionDeltaId);
     expect(errorClientes).toBeNull();
-    expect(clientes).toEqual([]);
+    expect(clientes!.length).toBeGreaterThan(0);
 
     const { data: movimientos, error: errorMovimientos } = await gestora
       .from("movimientos")
