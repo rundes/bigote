@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import { ShieldCheck, Users } from "lucide-react";
+import { obtenerContextoOrg } from "@/lib/org";
 
 export default async function PaginaMas({
   params,
@@ -7,6 +9,8 @@ export default async function PaginaMas({
   params: Promise<{ orgId: string }>;
 }) {
   const { orgId } = await params;
+  const contexto = await obtenerContextoOrg(orgId);
+  if (!contexto) redirect("/");
 
   return (
     <div className="flex flex-col gap-6">
@@ -20,9 +24,16 @@ export default async function PaginaMas({
           <Users size={20} strokeWidth={1.75} />
           Equipo
         </Link>
+        {contexto.permisos.admin && (
+          <Link
+            href={`/o/${orgId}/roles`}
+            className="flex h-11 items-center gap-3 text-sm font-medium text-tinta"
+          >
+            <ShieldCheck size={20} strokeWidth={1.75} />
+            Roles y permisos
+          </Link>
+        )}
       </div>
-
-      <p className="text-sm text-tinta-suave">Más opciones, próximamente.</p>
     </div>
   );
 }

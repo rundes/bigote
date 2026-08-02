@@ -4,6 +4,9 @@ import { listarProyectos } from "@/lib/proyectos";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import { FiltrosTrackRecord, type Periodo } from "@/componentes/equipo/FiltrosTrackRecord";
 import { TarjetaPersona, type FilaTrackRecord } from "@/componentes/equipo/TarjetaPersona";
+import { ListaMiembros } from "@/componentes/equipo/ListaMiembros";
+import { SheetInvitar } from "@/componentes/equipo/SheetInvitar";
+import { listarMiembros, listarRoles } from "@/lib/equipo";
 
 function esPeriodo(valor: string | undefined): valor is Periodo {
   return valor === "mes" || valor === "trimestre" || valor === "historico";
@@ -79,6 +82,8 @@ export default async function PaginaEquipo({
   const personas = (filas ?? []) as unknown as FilaTrackRecord[];
   const activos = proyectos.filter((p) => p.estado !== "archivado");
 
+  const [miembros, roles] = await Promise.all([listarMiembros(orgId), listarRoles(orgId)]);
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold text-tinta">
@@ -98,6 +103,20 @@ export default async function PaginaEquipo({
           ))}
         </div>
       )}
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-tinta">Miembros</h2>
+          {contexto.permisos.admin && <SheetInvitar orgId={orgId} roles={roles} />}
+        </div>
+        <ListaMiembros
+          orgId={orgId}
+          miembros={miembros}
+          roles={roles}
+          esAdmin={contexto.permisos.admin}
+          perfilPropioId={contexto.perfilId}
+        />
+      </section>
     </div>
   );
 }
