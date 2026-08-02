@@ -138,7 +138,7 @@ lib/
 scripts/seed.mjs         seed de demo idempotente
 supabase/migrations/     0001 esquema, 0002 RLS + helpers, 0003 crear_organizacion,
                          0004 RPCs de tareas, 0005 RPCs de reservas + bucket media,
-                         0006 clientes en co-gestión
+                         0006 clientes en co-gestión, 0007 movimientos por reserva
 tests/rls/               tests de aislamiento y reglas de reserva contra Supabase real
 docs/superpowers/        specs y planes por fase
 ```
@@ -151,5 +151,6 @@ Este repo se construye por fases documentadas en `docs/superpowers/`:
 - **Fase 1 — Base** (completa): esquema, RLS, seeds, auth, shell, tests, plataforma. Plan: `docs/superpowers/plans/2026-07-27-fase1-base.md`
 - **Fase 2 — Proyectos y tareas** (completa): CRUD de proyectos y tareas, pool + asignadas, track record por persona con filtros y privacidad. Criterios §5.2 verificados: pool atómico, track record sobre `completada_por`, privacidad de `equipo` en RLS.
 - **Fase 3 — Espacios** (completa): disponibilidad por día (grilla desktop, chips + columna mobile), reservas para mí o para terceros vía RPC `crear_reserva` (costo calculado en el servidor, plan y cliente validados contra la org propietaria), cancelación con motivo, administración de edificios/salas/planes y galería de fotos/videos en Supabase Storage, todo operable por la org gestora en edificios co-gestionados. Plan: `docs/superpowers/plans/2026-08-02-fase3-espacios.md`
+- **Fase 4 — Finanzas** (completa): alta manual de ingresos/egresos con ámbito (Entidad o edificio), resumen del mes + acumulado con chips de ámbito, movimientos automáticos por reserva paga vía triggers en la base según `destino_ingresos` (propietaria/gestora/reparto con redondeo a favor de la propietaria), reversión al cancelar, export CSV. Criterios §5.4 y el pendiente de §5.3 (costo = suma de movimientos) verificados con tests. Plan: `docs/superpowers/plans/2026-08-02-fase4-finanzas.md`
 
-Próximas: fase 4 (Finanzas: ingresos/egresos, ámbitos, integración de reservas con destino/reparto), fase 5 (Equipo/roles, pulido, deploy).
+Próxima: fase 5 (Equipo/roles: invitaciones, editor de permisos, pulido responsive y estados, deploy final).

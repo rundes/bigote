@@ -133,7 +133,7 @@ Criterios de aceptación:
 - [x] Imposible crear dos reservas confirmadas solapadas en la misma sala (validado en DB).
 - [x] Plan con `solo_salas_publicas` no aplica a sala privada.
 - [x] Miembro de la org gestora opera salas y reservas del edificio co-gestionado; miembro de una tercera org, no (test RLS).
-- [ ] El costo mostrado antes de confirmar coincide con la suma de movimientos generados. *(se cierra en fase 4 con el trigger de finanzas; el costo ya se calcula server-side)*
+- [x] El costo mostrado antes de confirmar coincide con la suma de movimientos generados.
 - [x] Miembro sin permiso `espacios` puede reservar para sí y cancelar la propia, pero no cancelar ajenas ni editar salas.
 - [x] (Fase 2, precondición del trigger de finanzas) Validar en DB que `plan_id` y `cliente_id` de una reserva pertenecen a la org propietaria del edificio, y que `costo` se calcula en el servidor, nunca del cliente.
 
@@ -146,10 +146,10 @@ Criterios de aceptación:
 - Exportación CSV del período (P1).
 
 Criterios de aceptación:
-- [ ] Reserva paga confirmada crea el/los ingresos según `destino_ingresos` (test de los tres modos; en reparto los montos suman el costo).
-- [ ] Cancelar la reserva revierte todos los ingresos, trazado.
-- [ ] Sin permiso `finanzas` no se leen `movimientos` ni por API directa (test RLS).
-- [ ] El libro de la org A nunca es visible para la org B, aunque co-gestionen un edificio (test RLS).
+- [x] Reserva paga confirmada crea el/los ingresos según `destino_ingresos` (test de los tres modos; en reparto los montos suman el costo).
+- [x] Cancelar la reserva revierte todos los ingresos, trazado.
+- [x] Sin permiso `finanzas` no se leen `movimientos` ni por API directa (test RLS).
+- [x] El libro de la org A nunca es visible para la org B, aunque co-gestionen un edificio (test RLS).
 
 ### 5.5 Equipo y administración (P0)
 
