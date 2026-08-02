@@ -136,9 +136,11 @@ lib/
   org.ts                 obtenerContextoOrg, listarMisOrgs (permisos por rol)
   supabase/              clientes (navegador, servidor, admin) y middleware de sesión
 scripts/seed.mjs         seed de demo idempotente
-supabase/migrations/     0001 esquema, 0002 RLS + helpers, 0003 crear_organizacion
+supabase/migrations/     0001 esquema, 0002 RLS + helpers, 0003 crear_organizacion,
+                         0004 RPCs de tareas, 0005 RPCs de reservas + bucket media,
+                         0006 clientes en co-gestión
 tests/rls/               tests de aislamiento y reglas de reserva contra Supabase real
-docs/superpowers/        specs y plan de la fase 1
+docs/superpowers/        specs y planes por fase
 ```
 
 ## Fases
@@ -148,5 +150,6 @@ Este repo se construye por fases documentadas en `docs/superpowers/`:
 - Spec de producto y diseño: `docs/superpowers/specs/2026-07-27-gestion-v1-design.md`, `docs/superpowers/specs/2026-07-27-gestion-v1-ux-brief.md`
 - **Fase 1 — Base** (completa): esquema, RLS, seeds, auth, shell, tests, plataforma. Plan: `docs/superpowers/plans/2026-07-27-fase1-base.md`
 - **Fase 2 — Proyectos y tareas** (completa): CRUD de proyectos y tareas, pool + asignadas, track record por persona con filtros y privacidad. Criterios §5.2 verificados: pool atómico, track record sobre `completada_por`, privacidad de `equipo` en RLS.
+- **Fase 3 — Espacios** (completa): disponibilidad por día (grilla desktop, chips + columna mobile), reservas para mí o para terceros vía RPC `crear_reserva` (costo calculado en el servidor, plan y cliente validados contra la org propietaria), cancelación con motivo, administración de edificios/salas/planes y galería de fotos/videos en Supabase Storage, todo operable por la org gestora en edificios co-gestionados. Plan: `docs/superpowers/plans/2026-08-02-fase3-espacios.md`
 
-Próximas: fase 3 (Espacios: edificios, salas, media, reservas, co-gestión), fase 4 (Finanzas: ingresos/egresos, ámbitos, integración de reservas), fase 5 (Equipo/roles, pulido, deploy).
+Próximas: fase 4 (Finanzas: ingresos/egresos, ámbitos, integración de reservas con destino/reparto), fase 5 (Equipo/roles, pulido, deploy).

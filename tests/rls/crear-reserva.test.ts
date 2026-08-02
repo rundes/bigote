@@ -108,6 +108,35 @@ describe("crear_reserva / cancelar_reserva: validaciones server-side", () => {
     expect(error!.message).toContain("Ese plan no aplica acá");
   });
 
+  it("(2b) cliente de otra org -> 'Ese cliente no es de la organización' [fecha 2027-09-01]", async () => {
+    // Cliente efímero de Gestora Sur: no pertenece a la org propietaria del
+    // edificio, así que la RPC lo rechaza aunque quien reserva sí opere ahí.
+    const { data: edificio } = await admin
+      .from("edificios")
+      .select("org_gestora_id")
+      .eq("nombre", "Casa Delta")
+      .single();
+    const { data: clienteAjeno, error: errorCliente } = await admin
+      .from("clientes")
+      .insert({ org_id: edificio!.org_gestora_id, nombre: "Cliente Sur [test-f3]" })
+      .select("id")
+      .single();
+    expect(errorCliente).toBeNull();
+
+    const { error } = await ope.rpc("crear_reserva", {
+      sala: salaNorteId,
+      plan: planPagoId,
+      dia: "2027-09-01",
+      inicio: 18,
+      duracion: 1,
+      cliente: clienteAjeno!.id,
+    });
+    expect(error).not.toBeNull();
+    expect(error!.message).toContain("Ese cliente no es de la organización");
+
+    await admin.from("clientes").delete().eq("id", clienteAjeno!.id);
+  });
+
   it("(3) plan solo salas públicas en sala privada -> error [fecha 2027-09-01]", async () => {
     const { error } = await ope.rpc("crear_reserva", {
       sala: estudioId,
