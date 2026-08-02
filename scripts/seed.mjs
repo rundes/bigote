@@ -293,6 +293,27 @@ async function upsertReserva(salaId, fecha, horaInicio, fields) {
   return data;
 }
 
+// Clave natural: org + detalle + fecha (fechas fijas para idempotencia).
+async function upsertMovimiento(orgId, detalle, fecha, fields) {
+  const { data: existing, error: selError } = await supabase
+    .from("movimientos")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("detalle", detalle)
+    .eq("fecha", fecha)
+    .maybeSingle();
+  assertNoError(selError, `select movimientos ${detalle}`);
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from("movimientos")
+    .insert({ org_id: orgId, detalle, fecha, ...fields })
+    .select("*")
+    .single();
+  assertNoError(error, `insert movimientos ${detalle}`);
+  return data;
+}
+
 async function upsertCliente(orgId, nombre, contacto) {
   const { data: existing, error: selError } = await supabase
     .from("clientes")
@@ -521,6 +542,35 @@ async function main() {
     creada_por: ope.id,
   });
 
+  // Movimientos manuales demo (los de reserva los generan los triggers de
+  // la migración 0007; el ámbito edificio es Casa Delta).
+  await upsertMovimiento(fundacionDelta.id, "Expensas y luz Casa Delta", "2026-11-05", {
+    tipo: "egreso",
+    categoria: "servicios",
+    monto: 180000,
+    edificio_id: casaDelta.id,
+    creado_por: admin.id,
+  });
+  await upsertMovimiento(fundacionDelta.id, "Hosting del sitio", "2026-11-10", {
+    tipo: "egreso",
+    categoria: "servicios",
+    monto: 30000,
+    creado_por: admin.id,
+  });
+  await upsertMovimiento(fundacionDelta.id, "Donación Colectivo Raíz", "2026-11-20", {
+    tipo: "ingreso",
+    categoria: "donaciones",
+    monto: 250000,
+    creado_por: admin.id,
+  });
+  await upsertMovimiento(gestoraSur.id, "Limpieza Casa Delta", "2026-11-12", {
+    tipo: "egreso",
+    categoria: "servicios",
+    monto: 90000,
+    edificio_id: casaDelta.id,
+    creado_por: admin.id,
+  });
+
   // 3. Resumen
   const counts = {};
   const tables = [
@@ -534,6 +584,7 @@ async function main() {
     "tareas",
     "clientes",
     "reservas",
+    "movimientos",
   ];
   for (const table of tables) {
     const { count, error } = await supabase
@@ -566,6 +617,7 @@ async function main() {
   console.log(`  tareas:    ${counts.tareas}`);
   console.log(`  clientes:  ${counts.clientes}`);
   console.log(`  reservas:  ${counts.reservas}`);
+  console.log(`  movs:      ${counts.movimientos}`);
 }
 
 main().catch((err) => {
