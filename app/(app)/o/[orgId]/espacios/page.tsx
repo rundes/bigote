@@ -11,6 +11,7 @@ import {
   reservasDelDia,
 } from "@/lib/espacios";
 import { SelectorDia } from "@/componentes/espacios/SelectorDia";
+import { SheetEdificio } from "@/componentes/espacios/SheetEdificio";
 import { GrillaDia } from "@/componentes/espacios/GrillaDia";
 import { TusReservas } from "@/componentes/espacios/TusReservas";
 
@@ -32,14 +33,17 @@ export default async function PaginaEspacios({
 
   if (edificios.length === 0) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col items-start gap-6">
         <h1 className="text-2xl font-semibold text-tinta">Espacios</h1>
         <p className="text-sm text-tinta-suave">
           Todavía no hay espacios.{" "}
           {contexto.permisos.espacios
-            ? "Creá el primero desde la administración."
+            ? "Creá el primero para empezar a reservar salas."
             : "Pedile a quien administra que cargue uno."}
         </p>
+        {contexto.permisos.espacios && (
+          <SheetEdificio orgId={orgId} edificio={null} propietariaNombre={contexto.org.nombre} orgs={[]} />
+        )}
       </div>
     );
   }
