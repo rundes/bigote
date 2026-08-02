@@ -6,11 +6,20 @@ import { clienteAdmin, clienteComo } from "./helpers";
 // limpieza borra el rango completo con el admin para que la suite pueda
 // correrse dos veces seguidas.
 async function limpiarReservasSeptiembre2027(admin: SupabaseClient) {
-  const { error } = await admin
+  // Primero los movimientos generados por el trigger (FK a reservas), después
+  // las reservas.
+  const { data: reservas } = await admin
     .from("reservas")
-    .delete()
+    .select("id")
     .gte("fecha", "2027-09-01")
     .lte("fecha", "2027-09-30");
+  const ids = (reservas ?? []).map((r) => r.id);
+  if (ids.length === 0) return;
+
+  const { error: errorMovs } = await admin.from("movimientos").delete().in("reserva_id", ids);
+  if (errorMovs) throw new Error(`No pude limpiar movimientos de septiembre 2027: ${errorMovs.message}`);
+
+  const { error } = await admin.from("reservas").delete().in("id", ids);
   if (error) throw new Error(`No pude limpiar reservas de septiembre 2027: ${error.message}`);
 }
 

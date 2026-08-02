@@ -9,11 +9,21 @@ import { clienteAdmin, clienteComo } from "./helpers";
 // tests pueden correrse dos veces seguidas sin arrastrar basura de una
 // corrida previa que haya crasheado antes de su propio afterAll.
 async function limpiarReservasAgosto2027(admin: SupabaseClient) {
-  const { error } = await admin
+  // Primero los movimientos generados por el trigger (FK a reservas), después
+  // las reservas. Este archivo usa solo el plan Gratuito (sin movimientos),
+  // pero la limpieza barre el mes completo por si otra corrida dejó algo.
+  const { data: reservas } = await admin
     .from("reservas")
-    .delete()
+    .select("id")
     .gte("fecha", "2027-08-01")
     .lte("fecha", "2027-08-31");
+  const ids = (reservas ?? []).map((r) => r.id);
+  if (ids.length === 0) return;
+
+  const { error: errorMovs } = await admin.from("movimientos").delete().in("reserva_id", ids);
+  if (errorMovs) throw new Error(`No pude limpiar movimientos de agosto 2027: ${errorMovs.message}`);
+
+  const { error } = await admin.from("reservas").delete().in("id", ids);
   if (error) throw new Error(`No pude limpiar reservas de agosto 2027: ${error.message}`);
 }
 
