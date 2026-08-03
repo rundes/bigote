@@ -103,9 +103,9 @@ Reglas de integridad (en DB, no solo en UI):
 - Invitación por email a una org con rol; al aceptar, el usuario elige método de ingreso.
 
 Criterios de aceptación:
-- [ ] Un usuario con dos orgs cambia con el switcher y todo el contexto (datos, permisos, navegación) cambia con él.
-- [ ] Login con Google y con magic link sobre el mismo email llegan a la misma cuenta.
-- [ ] Un usuario sin membresía activa en la org X no puede leer ningún dato de X por API directa (test RLS).
+- [ ] Un usuario con dos orgs cambia con el switcher y todo el contexto (datos, permisos, navegación) cambia con él. *(verificación manual con admin@demo.test, que pertenece a las dos orgs del seed)*
+- [ ] Login con Google y con magic link sobre el mismo email llegan a la misma cuenta. *(verificación manual: requiere Google OAuth configurado en el Dashboard de Supabase)*
+- [x] Un usuario sin membresía activa en la org X no puede leer ningún dato de X por API directa (test RLS).
 
 ### 5.2 Proyectos y tareas (P0)
 
@@ -178,13 +178,13 @@ Al final de cada fase: build + tests verdes y sistema desplegable.
 
 ## 8. Definition of done
 
-- [ ] TypeScript estricto, sin `any` injustificados; ESLint sin errores.
-- [ ] RLS probada con tests: cada rol intenta leer/escribir lo que no debe, incluye aislamiento entre orgs y el caso co-gestión (gestora sí, tercera org no).
-- [ ] Test del constraint de solapamiento y del reparto de ingresos (tres modos de `destino_ingresos`).
-- [ ] Responsive: usable en 380 px.
-- [ ] Estados vacíos, de carga y de error en cada módulo, en español directo que diga qué hacer.
-- [ ] README con setup local, variables de entorno y deploy.
-- [ ] Seed de demo en un comando: 2 orgs (una propietaria, una gestora), edificio co-gestionado con reparto, salas, planes, 3 usuarios con roles distintos, 2 proyectos, clientes.
+- [x] TypeScript estricto, sin `any` injustificados; ESLint sin errores.
+- [x] RLS probada con tests: cada rol intenta leer/escribir lo que no debe, incluye aislamiento entre orgs y el caso co-gestión (gestora sí, tercera org no).
+- [x] Test del constraint de solapamiento y del reparto de ingresos (tres modos de `destino_ingresos`).
+- [x] Responsive: usable en 380 px (mobile-first; lo ancho —grilla de salas— scrollea en su contenedor).
+- [x] Estados vacíos, de carga y de error en cada módulo, en español directo que diga qué hacer.
+- [x] README con setup local, variables de entorno y deploy.
+- [x] Seed de demo en un comando: 2 orgs (una propietaria, una gestora), edificio co-gestionado con reparto, salas, planes, 3 usuarios con roles distintos, 2 proyectos, clientes.
 
 ## 9. Decisiones tomadas (histórico de la iteración)
 

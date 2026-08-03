@@ -127,7 +127,7 @@ app/
   auth/callback/         callback de OAuth / magic link
   auth/salir/            logout
   (app)/o/[orgId]/       shell autenticado por organización
-    tareas/ finanzas/ espacios/ mas/   módulos
+    tareas/ finanzas/ espacios/ equipo/ roles/ mas/   módulos
     sin-acceso/          usuario sin permiso para esa org
   plataforma/            panel de super admin (crear organizaciones)
   sin-organizacion/      usuario autenticado sin ninguna membresía
@@ -152,5 +152,6 @@ Este repo se construye por fases documentadas en `docs/superpowers/`:
 - **Fase 2 — Proyectos y tareas** (completa): CRUD de proyectos y tareas, pool + asignadas, track record por persona con filtros y privacidad. Criterios §5.2 verificados: pool atómico, track record sobre `completada_por`, privacidad de `equipo` en RLS.
 - **Fase 3 — Espacios** (completa): disponibilidad por día (grilla desktop, chips + columna mobile), reservas para mí o para terceros vía RPC `crear_reserva` (costo calculado en el servidor, plan y cliente validados contra la org propietaria), cancelación con motivo, administración de edificios/salas/planes y galería de fotos/videos en Supabase Storage, todo operable por la org gestora en edificios co-gestionados. Plan: `docs/superpowers/plans/2026-08-02-fase3-espacios.md`
 - **Fase 4 — Finanzas** (completa): alta manual de ingresos/egresos con ámbito (Entidad o edificio), resumen del mes + acumulado con chips de ámbito, movimientos automáticos por reserva paga vía triggers en la base según `destino_ingresos` (propietaria/gestora/reparto con redondeo a favor de la propietaria), reversión al cancelar, export CSV. Criterios §5.4 y el pendiente de §5.3 (costo = suma de movimientos) verificados con tests. Plan: `docs/superpowers/plans/2026-08-02-fase4-finanzas.md`
+- **Fase 5 — Equipo y cierre de v1** (completa): invitar miembros por email con rol (reusa el flujo de invitación de Supabase; si el email ya tiene cuenta se suma directo), cambiar rol y desactivar/reactivar sin borrar historial (con guard anti-lockout: la org nunca queda sin administración), editor de roles y permisos (solo `admin`, en Más → Roles y permisos), estados de carga y error del shell. Plan: `docs/superpowers/plans/2026-08-02-fase5-equipo.md`
 
-Próxima: fase 5 (Equipo/roles: invitaciones, editor de permisos, pulido responsive y estados, deploy final).
+**v1 completa.** Pendiente de verificación manual (requiere Google OAuth configurado en el Dashboard): switcher multi-org con `admin@demo.test` e identity linking Google + magic link. Ideas para v2 en el spec §6 (cobros online, notificaciones, tope de horas gratis, reportes).
