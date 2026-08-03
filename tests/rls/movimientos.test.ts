@@ -135,9 +135,6 @@ describe("movimientos por reserva: destinos, redondeo, reversión y RLS", () => 
 
   afterAll(async () => {
     await limpiar(admin, fundacionDeltaId);
-    await ope.auth.signOut();
-    await coordi.auth.signOut();
-    await adminUser.auth.signOut();
   });
 
   it("(1) reparto 60%: dos ingresos que suman el costo exacto de la reserva [fecha 2027-10-01]", async () => {

@@ -31,6 +31,7 @@ describe("tercera org: un edificio co-gestionado no se filtra fuera de sus dos o
   let casaDeltaId: string;
   let salaNorteId: string;
   let planGratuitoId: string;
+  let fundacionDeltaId: string;
 
   beforeAll(async () => {
     await limpiar(admin);
@@ -82,6 +83,7 @@ describe("tercera org: un edificio co-gestionado no se filtra fuera de sus dos o
       .single();
     if (!edificio) throw new Error("No encontré el edificio Casa Delta");
     casaDeltaId = edificio.id;
+    fundacionDeltaId = edificio.org_propietaria_id;
 
     const { data: sala } = await admin
       .from("salas")
@@ -104,7 +106,6 @@ describe("tercera org: un edificio co-gestionado no se filtra fuera de sus dos o
 
   afterAll(async () => {
     await limpiar(admin);
-    await tercera.auth.signOut();
   });
 
   it("no ve el edificio, sus salas ni sus reservas", async () => {
@@ -128,6 +129,21 @@ describe("tercera org: un edificio co-gestionado no se filtra fuera de sus dos o
       .eq("sala_id", salaNorteId);
     expect(errorReservas).toBeNull();
     expect(reservas).toEqual([]);
+  });
+
+  it("§5.1: sin membresía activa en la org X no se lee ningún dato de X por API directa", async () => {
+    const tablas = ["proyectos", "clientes", "movimientos", "planes_reserva", "roles"] as const;
+    for (const tabla of tablas) {
+      const { data, error } = await tercera.from(tabla).select("id").eq("org_id", fundacionDeltaId);
+      expect(error, tabla).toBeNull();
+      expect(data, tabla).toEqual([]);
+    }
+
+    // tareas no tiene org_id directo: se consulta todo lo visible y no debe
+    // aparecer nada (la tercera org no tiene proyectos propios).
+    const { data: tareas, error: errorTareas } = await tercera.from("tareas").select("id");
+    expect(errorTareas).toBeNull();
+    expect(tareas).toEqual([]);
   });
 
   it("no puede reservar: 'No podés reservar en este edificio' [fecha 2027-08-20]", async () => {

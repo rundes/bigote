@@ -62,10 +62,6 @@ describe("tareas: gestión directa y transiciones vía RPC", () => {
 
   afterAll(async () => {
     await limpiarTareasTestF2(clienteServicio);
-    await admin.auth.signOut();
-    await coordi.auth.signOut();
-    await ope.auth.signOut();
-    await gestora.auth.signOut();
   });
 
   it("admin (permiso proyectos) crea una tarea directa en el pool de Sitio nuevo -> OK", async () => {

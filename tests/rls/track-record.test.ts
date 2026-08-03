@@ -55,8 +55,6 @@ describe("track_record: privacidad del historial de tareas completadas", () => {
   });
 
   afterAll(async () => {
-    await coordi.auth.signOut();
-    await ope.auth.signOut();
   });
 
   it("coordi (permiso equipo) ve el track record completo: al menos coordi y ope", async () => {

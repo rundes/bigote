@@ -80,9 +80,6 @@ describe("crear_reserva / cancelar_reserva: validaciones server-side", () => {
 
   afterAll(async () => {
     await limpiarReservasSeptiembre2027(admin);
-    await ope.auth.signOut();
-    await coordi.auth.signOut();
-    await gestora.auth.signOut();
   });
 
   it("(1) el costo lo calcula el servidor: plan pago 2h -> costo 16000 [fecha 2027-09-01]", async () => {

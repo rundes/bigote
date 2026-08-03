@@ -92,8 +92,6 @@ describe("reservas: permisos, solapamiento y endurecimiento", () => {
 
   afterAll(async () => {
     await limpiarReservasAgosto2027(admin);
-    await ope.auth.signOut();
-    await coordi.auth.signOut();
   });
 
   it("(a) ope crea reserva para sí vía RPC -> OK y queda a su nombre [fecha 2027-08-01]", async () => {

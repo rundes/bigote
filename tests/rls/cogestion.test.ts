@@ -66,7 +66,6 @@ describe("co-gestión: usuario solo-gestora y guard de crear_organizacion", () =
 
   afterAll(async () => {
     await limpiarReserva0805(admin);
-    await gestora.auth.signOut();
   });
 
   it("gestora (solo miembro de Gestora Sur) ve el edificio co-gestionado y sus 3 salas", async () => {
@@ -144,6 +143,5 @@ describe("co-gestión: usuario solo-gestora y guard de crear_organizacion", () =
     expect(errorSelect).toBeNull();
     expect(hackOrgs).toEqual([]);
 
-    await coordi.auth.signOut();
   });
 });
