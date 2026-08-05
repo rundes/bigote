@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ShieldCheck, Users } from "lucide-react";
 import { obtenerContextoOrg } from "@/lib/org";
+import { APP_VERSION } from "@/lib/version";
 
 export default async function PaginaMas({
   params,
@@ -34,6 +35,8 @@ export default async function PaginaMas({
           </Link>
         )}
       </div>
+
+      <p className="text-xs text-tinta-suave">bigote v{APP_VERSION}</p>
     </div>
   );
 }

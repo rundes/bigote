@@ -1,4 +1,5 @@
 import { FormIngreso } from "./FormIngreso";
+import { APP_VERSION } from "@/lib/version";
 
 export default async function PaginaIngresar({
   searchParams,
@@ -19,6 +20,9 @@ export default async function PaginaIngresar({
           </p>
         </div>
         <FormIngreso errorInicial={errorInicial} />
+        <p className="mt-8 text-center text-xs text-tinta-suave">
+          v{APP_VERSION}
+        </p>
       </div>
     </main>
   );
