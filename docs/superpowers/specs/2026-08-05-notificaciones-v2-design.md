@@ -42,7 +42,7 @@ Movimientos financieros: fuera de alcance (decisión explícita).
 
 ## 5. Generación de eventos
 
-Helper `notificar(evento, destinatarios, payload)` en el server, llamado desde las server actions existentes: crear/cancelar reserva, invitar miembro, asignar tarea, marcar tarea hecha. Resuelve preferencias por destinatario e inserta las filas outbox (para reservas, además la fila futura del recordatorio). La acción del usuario nunca espera el envío: insertar es todo.
+**(Enmendado en fase 1.)** Triggers en Postgres sobre `reservas` (insert → confirmada + recordatorio; estado → cancelada), `tareas` (insert/update de asignado → asignada; estado hecha → hecha) y `membresias` (insert → invitación), que llaman a `encolar_notificacion()`: resuelve preferencias, teléfono y suscripciones del destinatario e inserta las filas outbox en la misma transacción. Regla: nunca se notifica al autor de la acción (salvo confirmación y recordatorio de reserva propia, que son un comprobante). Motivo del cambio respecto del helper TS: transaccionalidad garantizada y reutilización directa por el bot de fase 5, que escribe por los mismos RPCs.
 
 ## 6. Despacho email + push (en la app Next / Vercel)
 

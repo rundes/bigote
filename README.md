@@ -155,3 +155,5 @@ Este repo se construye por fases documentadas en `docs/superpowers/`:
 - **Fase 5 — Equipo y cierre de v1** (completa): invitar miembros por email con rol (reusa el flujo de invitación de Supabase; si el email ya tiene cuenta se suma directo), cambiar rol y desactivar/reactivar sin borrar historial (con guard anti-lockout: la org nunca queda sin administración), editor de roles y permisos (solo `admin`, en Más → Roles y permisos), estados de carga y error del shell. Plan: `docs/superpowers/plans/2026-08-02-fase5-equipo.md`
 
 **v1 completa.** Pendiente de verificación manual (requiere Google OAuth configurado en el Dashboard): switcher multi-org con `admin@demo.test` e identity linking Google + magic link. Ideas para v2 en el spec §6 (cobros online, notificaciones, tope de horas gratis, reportes).
+
+v2 en curso — fase 1 (núcleo de notificaciones) completa: outbox + triggers + perfil y avisos. Spec: `docs/superpowers/specs/2026-08-05-notificaciones-v2-design.md`.
