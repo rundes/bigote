@@ -62,9 +62,22 @@ describe("triggers de notificaciones: tareas", () => {
   });
 
   it("completar tarea ajena avisa al creador; completar propia no", async () => {
-    const ajena = await crearTareaComo("admin@demo.test", coordiId);
+    // Sin asignado, así tomar_tarea (que exige asignado_a is null, ver
+    // 0004:8) hace un self-assign real en vez de ser un no-op.
+    const ajena = await crearTareaComo("admin@demo.test", null);
     const comoCoordi = await clienteComo("coordi@demo.test");
-    await comoCoordi.rpc("tomar_tarea", { tarea: ajena }).then(() => {});
+    const { error: errorTomar } = await comoCoordi.rpc("tomar_tarea", { tarea: ajena });
+    expect(errorTomar).toBeNull();
+
+    // El self-assign (asignado_a = auth.uid()) no debe generar tarea_asignada:
+    // el trigger filtra por actor (0008:237).
+    const { data: filasAsignada } = await admin
+      .from("notificaciones")
+      .select("id")
+      .eq("payload->>tarea_id", ajena)
+      .eq("evento", "tarea_asignada");
+    expect(filasAsignada).toHaveLength(0);
+
     const { error } = await comoCoordi.rpc("completar_tarea", { tarea: ajena });
     expect(error).toBeNull();
     const { data: filas } = await admin
@@ -76,8 +89,10 @@ describe("triggers de notificaciones: tareas", () => {
 
     const propia = await crearTareaComo("admin@demo.test", null);
     const comoAdmin = await clienteComo("admin@demo.test");
-    await comoAdmin.rpc("tomar_tarea", { tarea: propia });
-    await comoAdmin.rpc("completar_tarea", { tarea: propia });
+    const { error: errorTomarPropia } = await comoAdmin.rpc("tomar_tarea", { tarea: propia });
+    expect(errorTomarPropia).toBeNull();
+    const { error: errorCompletarPropia } = await comoAdmin.rpc("completar_tarea", { tarea: propia });
+    expect(errorCompletarPropia).toBeNull();
     const { data: filasPropia } = await admin
       .from("notificaciones")
       .select("id").eq("payload->>tarea_id", propia).eq("evento", "tarea_hecha");
