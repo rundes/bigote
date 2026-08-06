@@ -7,12 +7,43 @@ import { clienteAdmin, clienteComo } from "./helpers";
 // Sala y plan salen del mismo seed que usa crear-reserva.test.ts (Casa
 // Delta / Sala Norte / Pago por hora), así el costo da > 0 y el trigger de
 // fase 4 genera movimientos que hay que limpiar antes de borrar la reserva.
+// Rango de fechas relativas a "hoy" que usa esta suite (fechaFutura(7..10)).
+// Se limpia por rango (sala + hora + fechas), no por ids en memoria, para
+// que una corrida abortada (ctrl-C, kill, corte de red) no deje reservas
+// huérfanas que choquen con reservas_sin_solape en la siguiente corrida.
+function fechaFutura(dias: number): string {
+  const d = new Date(Date.now() + dias * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+const HORA_RESERVA = 10;
+const RANGO_DESDE = fechaFutura(0);
+const RANGO_HASTA = fechaFutura(15); // margen sobre el 7..10 que usan los tests
+
+async function limpiarReservasEnCurso(admin: SupabaseClient, salaId: string) {
+  const { data: reservas } = await admin
+    .from("reservas")
+    .select("id")
+    .eq("sala_id", salaId)
+    .eq("hora_inicio", HORA_RESERVA)
+    .gte("fecha", RANGO_DESDE)
+    .lte("fecha", RANGO_HASTA);
+  const ids = (reservas ?? []).map((r) => r.id);
+  if (ids.length === 0) return;
+
+  await admin.from("notificaciones").delete().in("payload->>reserva_id", ids);
+  // Igual que crear-reserva.test.ts: primero los movimientos generados por
+  // el trigger de fase 4 (FK a reservas, sin cascade), después las reservas.
+  const { error: errorMovs } = await admin.from("movimientos").delete().in("reserva_id", ids);
+  if (errorMovs) throw new Error(`No pude limpiar movimientos: ${errorMovs.message}`);
+  const { error: errorReservas } = await admin.from("reservas").delete().in("id", ids);
+  if (errorReservas) throw new Error(`No pude limpiar reservas: ${errorReservas.message}`);
+}
+
 describe("triggers de notificaciones: reservas", () => {
   const admin = clienteAdmin();
   let adminId: string;
   let salaNorteId: string;
   let planPagoId: string;
-  const reservasCreadas: string[] = [];
 
   beforeAll(async () => {
     const { data: perfil } = await admin
@@ -42,27 +73,14 @@ describe("triggers de notificaciones: reservas", () => {
     );
     if (!planPago) throw new Error("Falta el plan del seed (Pago por hora)");
     planPagoId = planPago.id;
+
+    // Self-healing: si una corrida anterior quedó a medio limpiar, se borra
+    // acá antes de crear nada nuevo.
+    await limpiarReservasEnCurso(admin, salaNorteId);
   }, 30000);
 
   afterAll(async () => {
-    if (reservasCreadas.length) {
-      await admin
-        .from("notificaciones")
-        .delete()
-        .in("payload->>reserva_id", reservasCreadas);
-      // Igual que crear-reserva.test.ts: primero los movimientos generados
-      // por el trigger de fase 4 (FK a reservas), después las reservas.
-      const { error: errorMovs } = await admin
-        .from("movimientos")
-        .delete()
-        .in("reserva_id", reservasCreadas);
-      if (errorMovs) throw new Error(`No pude limpiar movimientos: ${errorMovs.message}`);
-      const { error: errorReservas } = await admin
-        .from("reservas")
-        .delete()
-        .in("id", reservasCreadas);
-      if (errorReservas) throw new Error(`No pude limpiar reservas: ${errorReservas.message}`);
-    }
+    await limpiarReservasEnCurso(admin, salaNorteId);
     await admin.from("preferencias_notificaciones").delete().eq("usuario_id", adminId);
     await admin.from("perfiles").update({ telefono: null }).eq("id", adminId);
   }, 30000);
@@ -70,16 +88,10 @@ describe("triggers de notificaciones: reservas", () => {
   async function reservar(dia: string): Promise<string> {
     const comoAdmin = await clienteComo("admin@demo.test");
     const { data: reservaId, error } = await comoAdmin.rpc("crear_reserva", {
-      sala: salaNorteId, plan: planPagoId, dia, inicio: 10, duracion: 2, cliente: null,
+      sala: salaNorteId, plan: planPagoId, dia, inicio: HORA_RESERVA, duracion: 2, cliente: null,
     });
     expect(error).toBeNull();
-    reservasCreadas.push(reservaId as string);
     return reservaId as string;
-  }
-
-  function fechaFutura(dias: number): string {
-    const d = new Date(Date.now() + dias * 86400000);
-    return d.toISOString().slice(0, 10);
   }
 
   it("reservar encola confirmación email + recordatorio 24 h antes", async () => {
