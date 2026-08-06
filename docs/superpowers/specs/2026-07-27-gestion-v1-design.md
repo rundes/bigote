@@ -104,7 +104,7 @@ Reglas de integridad (en DB, no solo en UI):
 
 Criterios de aceptación:
 - [ ] Un usuario con dos orgs cambia con el switcher y todo el contexto (datos, permisos, navegación) cambia con él. *(verificación manual con admin@demo.test, que pertenece a las dos orgs del seed)*
-- [ ] Login con Google y con magic link sobre el mismo email llegan a la misma cuenta. *(verificación manual: requiere Google OAuth configurado en el Dashboard de Supabase)*
+- [x] Login con Google y con magic link sobre el mismo email llegan a la misma cuenta. *(verificado 06-ago-2026: Google OAuth configurado vía Management API; auth.identities muestra email+google en la misma cuenta)*
 - [x] Un usuario sin membresía activa en la org X no puede leer ningún dato de X por API directa (test RLS).
 
 ### 5.2 Proyectos y tareas (P0)
