@@ -127,7 +127,7 @@ describe("triggers de notificaciones: tareas", () => {
     expect(filasPropia).toHaveLength(0);
   });
 
-  it("alta de membresía encola invitación wa (con teléfono) y descarta email", async () => {
+  it("alta de membresía encola invitación wa (con teléfono) y no encola email", async () => {
     // org donde coordi todavía no es miembro (admin pertenece a las dos del seed)
     const { data: orgs } = await admin.from("organizaciones").select("id");
     const { data: mias } = await admin
@@ -155,7 +155,10 @@ describe("triggers de notificaciones: tareas", () => {
       .eq("usuario_id", coordiId)
       .eq("evento", "invitacion");
     expect(filas!.some((f) => f.canal === "wa" && f.estado === "pendiente")).toBe(true);
-    expect(filas!.filter((f) => f.canal === "email").every((f) => f.estado === "descartada")).toBe(true);
+    // 0009: notificar_invitacion pasa canales: ['wa','push'] a encolar_notificacion,
+    // así que el filtro de canales evita crear la fila email desde el vamos
+    // (ya no hay descarte post-hoc).
+    expect(filas!.some((f) => f.canal === "email")).toBe(false);
 
     // limpieza
     await admin.from("membresias").delete()
