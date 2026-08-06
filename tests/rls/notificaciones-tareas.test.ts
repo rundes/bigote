@@ -12,12 +12,40 @@ describe("triggers de notificaciones: tareas", () => {
     const { data: perfiles } = await admin
       .from("perfiles").select("id, email")
       .in("email", ["admin@demo.test", "coordi@demo.test"]);
-    adminId = perfiles!.find((p) => p.email === "admin@demo.test")!.id;
-    coordiId = perfiles!.find((p) => p.email === "coordi@demo.test")!.id;
+    const admin_ = perfiles!.find((p) => p.email === "admin@demo.test");
+    const coordi_ = perfiles!.find((p) => p.email === "coordi@demo.test");
+    if (!admin_ || !coordi_) {
+      throw new Error("Faltan los perfiles del seed (admin@demo.test / coordi@demo.test)");
+    }
+    adminId = admin_.id;
+    coordiId = coordi_.id;
+
+    // Self-healing: si una corrida anterior murió a mitad del último test
+    // ("alta de membresía..."), pudo dejar a coordi con una membresía extra
+    // en Gestora Sur (la única org del seed donde coordi no es miembro —
+    // ver scripts/seed.mjs: coordi solo tiene membresía en Fundación Delta),
+    // notificaciones de invitación sueltas y el teléfono de prueba pegado.
+    // Se limpia todo acá antes de que el resto del beforeAll/tests corra,
+    // para no explotar con un TypeError críptico si `orgs!.find(...)` del
+    // último test no encuentra ninguna org libre.
+    const { data: orgFundacionDelta } = await admin
+      .from("organizaciones").select("id").eq("nombre", "Fundación Delta").maybeSingle();
+    if (orgFundacionDelta) {
+      // Cualquier membresía de coordi fuera de la org del seed es sobrante.
+      await admin.from("membresias").delete().eq("perfil_id", coordiId).neq("org_id", orgFundacionDelta.id);
+    }
+    await admin.from("notificaciones").delete().eq("usuario_id", coordiId).eq("evento", "invitacion");
+    await admin.from("perfiles").update({ telefono: null }).eq("id", coordiId);
+
     // proyecto del seed donde ambos son miembros (mismo criterio que tareas.test.ts)
     const { data: pm } = await admin
       .from("proyecto_miembros").select("proyecto_id").eq("perfil_id", coordiId).limit(1);
-    proyectoId = pm![0].proyecto_id;
+    if (!pm || pm.length === 0) {
+      throw new Error(
+        "coordi@demo.test no es miembro de ningún proyecto del seed: no puedo elegir proyectoId"
+      );
+    }
+    proyectoId = pm[0].proyecto_id;
   }, 30000);
 
   afterAll(async () => {
@@ -104,7 +132,14 @@ describe("triggers de notificaciones: tareas", () => {
     const { data: orgs } = await admin.from("organizaciones").select("id");
     const { data: mias } = await admin
       .from("membresias").select("org_id").eq("perfil_id", coordiId);
-    const orgNueva = orgs!.find((o) => !mias!.some((m) => m.org_id === o.id))!.id;
+    const orgLibre = orgs?.find((o) => !mias?.some((m) => m.org_id === o.id));
+    if (!orgLibre) {
+      throw new Error(
+        "No encontré ninguna org del seed donde coordi@demo.test no sea ya miembro " +
+          "(esperaba al menos una libre, p.ej. Gestora Sur, para probar el alta de membresía)"
+      );
+    }
+    const orgNueva = orgLibre.id;
     const { data: rol } = await admin
       .from("roles").select("id").eq("org_id", orgNueva).limit(1).single();
 
