@@ -107,3 +107,50 @@ Cada fase termina deployada y usable; el valor no depende de las fases siguiente
 - Verificación de teléfono por código.
 - Un número de WhatsApp por org / multi-sesión.
 - Cobros, media u otros flujos por chat más allá de reservas de salas.
+
+## 13. Notas para fase 2 (del review final de fase 1)
+
+- **Re-chequeo de preferencias al despachar.** El dispatcher debe volver a
+  consultar `preferencias_notificaciones` (y `perfiles.telefono` para el
+  canal `wa`) inmediatamente antes de enviar cualquier fila con
+  `programada_para` no nulo. Las preferencias se evalúan una sola vez al
+  encolar, pero un recordatorio (p. ej. `reserva_recordatorio`) puede vivir
+  semanas en la cola: si el usuario apaga el canal o borra su teléfono
+  después de encolar y antes de que llegue la fecha de envío, el envío
+  saldría igual salvo que el dispatcher repita el chequeo al momento de
+  procesar la fila.
+
+- **`reserva_cancelada` y ruteo por org.** El `org_id` de estas
+  notificaciones es siempre el de la organización propietaria del edificio,
+  pero entre los destinatarios hay personas de la organización gestora
+  también. El link que arme el dispatcher de fase 2 no puede construirse
+  ruteando por `org_id` a secas, porque para un destinatario de la gestora
+  ese id no corresponde a su organización. El payload necesita llevar el
+  edificio (o, alternativamente, la organización correcta por destinatario)
+  para que el link resuelva a la ruta correcta según quién lo recibe.
+
+- **Claim atómico obligatorio.** El paso de "tomar" filas pendientes para
+  procesar debe ser un único `UPDATE notificaciones SET estado = '...'
+  WHERE estado = 'pendiente' ... RETURNING *`, nunca un `SELECT` seguido de
+  un `UPDATE` separado. Hoy no existe un estado intermedio tipo
+  `en_proceso`: si dos crons (o dos instancias del dispatcher) se solapan
+  en el tiempo, un patrón SELECT+UPDATE dejaría una ventana en la que ambos
+  leen las mismas filas `pendiente` y duplican el envío. El `UPDATE ...
+  RETURNING` con el filtro por estado en el `WHERE` es atómico por fila y
+  evita esa duplicación sin necesidad de locks explícitos.
+
+- **Migración 0009 (fase 2).** Conviene agrupar en una sola migración:
+  - Revocar el permiso de `UPDATE`/`INSERT` directo sobre la columna
+    `creada_por` de `tareas` para el rol `authenticated` (hoy queda
+    editable por el cliente aunque el valor correcto lo pone el trigger).
+  - Agregar la columna `reserva_id uuid` (con su índice) a `notificaciones`,
+    para reemplazar el filtrado actual por `payload->>reserva_id` — hoy la
+    limpieza y el matching de estas filas dependen de un descarte contra el
+    payload en vez de una FK indexada.
+  - Ajustar la firma de `encolar_notificacion` para que reciba un filtro de
+    canal explícito, eliminando el patrón actual de "encolar y después
+    descartar" que usa el email de invitación (se encola en un canal
+    apagado solo para marcarlo `descartada` acto seguido).
+  - Evaluar sumar una columna `ultimo_error text` (nullable), para guardar
+    el motivo cuando una fila queda en estado `fallida` y así poder
+    diagnosticar sin tener que reproducir el envío.
