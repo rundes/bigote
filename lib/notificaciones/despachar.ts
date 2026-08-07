@@ -79,6 +79,15 @@ export async function despachar(
   );
 
   for (const n of notificaciones) {
+    // Flags para el catch: si el envío ya salió (Resend lo aceptó) o ya se
+    // tomó la decisión de descartar, una excepción DESPUÉS de ese punto
+    // (p.ej. el update de cierre tirando por un corte de red) no debe
+    // pasar por marcarFallo — eso reencolaría una fila que ya se resolvió
+    // y fabricaría un email duplicado (o un reintento espurio sobre un
+    // descarte ya decidido). Solo una excepción ANTES de resolver
+    // (render, el propio enviarEmail) es un fallo de envío real.
+    let envioExitoso = false;
+    let decisionDescartar = false;
     try {
       // Si la query batcheada de perfiles o preferencias falló, no hay
       // datos confiables para NINGUNA fila del lote: se dejan "enviando"
@@ -98,6 +107,7 @@ export async function despachar(
         ? decidirEnvio(n, { email: prefsUsuario?.email ?? true }, ahora())
         : "descartar";
       if (decision === "descartar") {
+        decisionDescartar = true;
         const { error } = await admin.from("notificaciones")
           .update({
             estado: "descartada",
@@ -114,6 +124,7 @@ export async function despachar(
       const envio = await enviarEmail({ from, to: perfil!.email, subject: asunto, text: texto });
 
       if (envio.ok) {
+        envioExitoso = true;
         const { error } = await admin.from("notificaciones")
           .update({ estado: "enviada", enviada_en: ahora().toISOString(), ultimo_error: null, reclamada_en: null })
           .eq("id", n.id);
@@ -131,9 +142,21 @@ export async function despachar(
         await marcarFallo(admin, n, envio.error ?? "error desconocido", resumen);
       }
     } catch (e) {
-      // Un throw (p.ej. el fetch de Resend por un corte de red) no debe
-      // estrangular el resto del lote: se trata igual que un fallo de
-      // envío, con su reintento/agotamiento normal.
+      if (envioExitoso || decisionDescartar) {
+        // Ver comentario arriba del try: no reintentar algo ya resuelto.
+        // La fila queda "enviando" (el update de cierre fue lo que tiró);
+        // la retoma el rescate, con el mismo riesgo residual de reenvío
+        // ya documentado y aceptado en el camino feliz de arriba.
+        console.error(
+          `despachar: excepción tras resolver ${n.id} (envioExitoso=${envioExitoso}, descartada=${decisionDescartar}); no reintenta, la retoma el rescate`,
+          e
+        );
+        if (envioExitoso) resumen.enviadas++; else resumen.descartadas++;
+        continue;
+      }
+      // Excepción ANTES de decidir/enviar (p.ej. el fetch de Resend por un
+      // corte de red): se trata como un fallo de envío real, con su
+      // reintento/agotamiento normal. No estrangula el resto del lote.
       const mensaje = e instanceof Error ? e.message : String(e);
       console.error(`despachar: excepción procesando ${n.id}`, e);
       await marcarFallo(admin, n, mensaje, resumen);
