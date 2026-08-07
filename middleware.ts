@@ -6,5 +6,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)"],
+  // api/notificaciones/despachar excluido: lo llama pg_cron sin sesión de
+  // usuario, autenticado con su propio Bearer CRON_SECRET (ver route.ts).
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/notificaciones/despachar|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)",
+  ],
 };
