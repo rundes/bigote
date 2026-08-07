@@ -6,13 +6,17 @@ describe("despachar (integración con DB, envío falso)", () => {
   const admin = clienteAdmin();
   let adminId: string;
   const marca = { t: "despachar-test" };
-  // despachar() reclama TODO el backlog email pendiente de la DB compartida
-  // (100+ filas zombie de otras corridas): el sender falso las "envía" sin
-  // salir nada real, pero eso les cambia estado/intentos/ultimo_error de
-  // verdad en la DB. Snapshot fiel (incluyendo ultimo_error, como en
-  // tests/rls/despacho.test.ts) para poder restaurarlas byte a byte en
-  // afterAll y no pisar diagnóstico de filas ajenas.
-  type FilaAjena = { id: string; estado: string; intentos: number; ultimo_error: string | null };
+  // despachar() reclama TODO el backlog email pendiente/enviando de la DB
+  // compartida (78+ filas zombie de otras corridas): el sender falso las
+  // "envía" sin salir nada real, pero eso les cambia estado/intentos/
+  // ultimo_error/reclamada_en/enviada_en de verdad en la DB. Snapshot fiel
+  // (todas las columnas que despachar() puede tocar) para poder
+  // restaurarlas byte a byte en afterAll y no pisar diagnóstico de filas
+  // ajenas ni dejar nada en un estado intermedio.
+  type FilaAjena = {
+    id: string; estado: string; intentos: number;
+    ultimo_error: string | null; reclamada_en: string | null; enviada_en: string | null;
+  };
   let ajenas: FilaAjena[] = [];
 
   async function encolar(extra: Record<string, unknown> = {}): Promise<string> {
@@ -33,37 +37,35 @@ describe("despachar (integración con DB, envío falso)", () => {
     // payload real (sin clave "t"), y en Postgres NULL != 'x' da NULL (no
     // true), así que ese filtro las excluiría en silencio del snapshot y
     // el afterAll jamás las restauraría.
+    //
+    // estado in (pendiente, enviando): despachar() también muta filas que
+    // ya estaban "enviando" (rescate → vuelven a pendiente → se reclaman
+    // de nuevo en el mismo llamado), así que el snapshot tiene que
+    // cubrirlas o el afterAll las deja mal restauradas.
     const { data: pendientes } = await admin
       .from("notificaciones")
-      .select("id, estado, intentos, ultimo_error")
+      .select("id, estado, intentos, ultimo_error, reclamada_en, enviada_en")
       .eq("canal", "email")
-      .eq("estado", "pendiente");
+      .in("estado", ["pendiente", "enviando"]);
     ajenas = pendientes ?? [];
   }, 30000);
 
   afterAll(async () => {
     await admin.from("notificaciones").delete().eq("payload->>t", "despachar-test");
-    // Restaurar en bloque (no fila por fila: son 100+ filas ajenas y eso
-    // excede el hookTimeout). Todas las filas partían de estado 'pendiente'
-    // (así se filtraron en el snapshot): despachar() puede haberlas dejado
-    // en 'enviada', 'descartada', 'pendiente' (reintento) o 'fallida' según
-    // le tocara a cada una. Se restauran TODAS a su estado/intentos/
-    // ultimo_error original, no solo las que quedaron 'enviando' (acá nunca
-    // quedan en ese estado transitorio: el dispatcher siempre resuelve el
-    // envío antes de devolver).
-    const grupos = new Map<
-      string,
-      { estado: string; intentos: number; ultimo_error: string | null; ids: string[] }
-    >();
+    // Restaurar en bloque (no fila por fila: son decenas de filas ajenas y
+    // eso excede el hookTimeout). despachar() puede haber dejado cada fila
+    // en 'enviada', 'descartada', 'pendiente' (reintento) o 'fallida'
+    // según le tocara; se restauran TODAS a su estado y columnas
+    // originales exactas, no solo las que quedaron en algún estado
+    // particular.
+    const grupos = new Map<string, FilaAjena & { ids: string[] }>();
     for (const fila of ajenas) {
-      const clave = `${fila.estado}|${fila.intentos}|${fila.ultimo_error ?? ""}`;
+      const clave = `${fila.estado}|${fila.intentos}|${fila.ultimo_error ?? ""}|${fila.reclamada_en ?? ""}|${fila.enviada_en ?? ""}`;
       const grupo = grupos.get(clave);
       if (grupo) {
         grupo.ids.push(fila.id);
       } else {
-        grupos.set(clave, {
-          estado: fila.estado, intentos: fila.intentos, ultimo_error: fila.ultimo_error, ids: [fila.id],
-        });
+        grupos.set(clave, { ...fila, ids: [fila.id] });
       }
     }
     for (const grupo of grupos.values()) {
@@ -71,7 +73,7 @@ describe("despachar (integración con DB, envío falso)", () => {
         .from("notificaciones")
         .update({
           estado: grupo.estado, intentos: grupo.intentos, ultimo_error: grupo.ultimo_error,
-          enviada_en: null, reclamada_en: null,
+          reclamada_en: grupo.reclamada_en, enviada_en: grupo.enviada_en,
         })
         .in("id", grupo.ids);
     }
@@ -104,13 +106,21 @@ describe("despachar (integración con DB, envío falso)", () => {
 
   it("programada con email off se descarta sin enviar", async () => {
     await admin.from("preferencias_notificaciones").upsert({ usuario_id: adminId, email: false });
-    const id = await encolar({ programada_para: new Date(Date.now() - 1000).toISOString() });
-    const llamadas: unknown[] = [];
-    const falso: EnviarEmail = async (a) => { llamadas.push(a); return { ok: true }; };
+    try {
+      const id = await encolar({ programada_para: new Date(Date.now() - 1000).toISOString() });
+      const llamadas: unknown[] = [];
+      const falso: EnviarEmail = async (a) => { llamadas.push(a); return { ok: true }; };
 
-    await despachar(admin, falso, "bigote <test@test>");
-    const { data } = await admin.from("notificaciones").select("estado").eq("id", id).single();
-    expect(data!.estado).toBe("descartada");
-    await admin.from("preferencias_notificaciones").delete().eq("usuario_id", adminId);
+      await despachar(admin, falso, "bigote <test@test>");
+      const { data } = await admin.from("notificaciones").select("estado, enviada_en").eq("id", id).single();
+      expect(data!.estado).toBe("descartada");
+      expect(data!.enviada_en).toBeNull();
+      expect(llamadas).toHaveLength(0);
+    } finally {
+      // try/finally: si algún assert de arriba falla, igual se limpia la
+      // preferencia y no queda email:false pegado a admin@demo.test en la
+      // DB compartida para el resto de la suite.
+      await admin.from("preferencias_notificaciones").delete().eq("usuario_id", adminId);
+    }
   }, 60000);
 });

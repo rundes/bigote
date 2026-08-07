@@ -25,6 +25,9 @@ export async function POST(request: Request) {
   }
   const from = process.env.EMAIL_FROM;
   if (!from) return NextResponse.json({ error: "falta EMAIL_FROM" }, { status: 500 });
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ error: "falta RESEND_API_KEY" }, { status: 500 });
+  }
 
   const resumen = await despachar(crearClienteAdmin(), enviarConResend, from);
   return NextResponse.json(resumen);
