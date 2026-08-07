@@ -18,6 +18,7 @@ describe("despacho de notificaciones", () => {
     estado: string;
     intentos: number;
     reclamada_en: string | null;
+    ultimo_error: string | null;
   };
   let ajenas: FilaAjena[] = [];
   // reclamar_notificaciones ordena por creada_en asc: con maximo:100 fijo,
@@ -26,6 +27,11 @@ describe("despacho de notificaciones", () => {
   // "no la ve" aunque la función esté bien. maximoSeguro se calcula sobre
   // el snapshot para blindar los asserts de inclusión sin depender del
   // volumen de basura ajena acumulada en la DB compartida.
+  // Asume <20 pendientes ajenas nuevas entre el snapshot y el claim: hoy
+  // es seguro (no hay dispatcher vivo ni suites corriendo en paralelo
+  // contra esta DB), pero no es una garantía general — revisar este
+  // margen cuando el dispatcher real esté desplegado y compitiendo por
+  // las mismas filas.
   let maximoSeguro: number;
 
   async function encolarDirecto(extra: Record<string, unknown> = {}): Promise<string> {
@@ -51,7 +57,7 @@ describe("despacho de notificaciones", () => {
 
     const { data: pendientesEmail } = await admin
       .from("notificaciones")
-      .select("id, estado, intentos, reclamada_en")
+      .select("id, estado, intentos, reclamada_en, ultimo_error")
       .eq("canal", "email")
       .eq("estado", "pendiente");
     ajenas = pendientesEmail ?? [];
@@ -60,19 +66,30 @@ describe("despacho de notificaciones", () => {
 
   afterAll(async () => {
     await admin.from("notificaciones").delete().eq("payload->>t", "despacho-test");
-    // Restaurar en bloque, agrupando por (intentos, reclamada_en) original
-    // -- son ~90 filas ajenas y una vuelta fila por fila excede el
-    // hookTimeout. Todas partían de estado 'pendiente' (así se filtraron
-    // en el snapshot), así que alcanza con pisar las que hayan quedado
-    // 'enviando' por nuestros claims.
-    const grupos = new Map<string, { intentos: number; reclamada_en: string | null; ids: string[] }>();
+    // Restaurar en bloque, agrupando por (intentos, reclamada_en,
+    // ultimo_error) original -- son ~90 filas ajenas y una vuelta fila por
+    // fila excede el hookTimeout. Todas partían de estado 'pendiente'
+    // (así se filtraron en el snapshot), así que alcanza con pisar las
+    // que hayan quedado 'enviando' por nuestros claims. ultimo_error
+    // entra al agrupamiento (y no se pisa a null a secas): una fila ajena
+    // 'pendiente' puede legítimamente traer diagnóstico de un rescate
+    // previo (0010) y perderlo sería destruir información real.
+    const grupos = new Map<
+      string,
+      { intentos: number; reclamada_en: string | null; ultimo_error: string | null; ids: string[] }
+    >();
     for (const fila of ajenas) {
-      const clave = `${fila.intentos}|${fila.reclamada_en ?? ""}`;
+      const clave = `${fila.intentos}|${fila.reclamada_en ?? ""}|${fila.ultimo_error ?? ""}`;
       const grupo = grupos.get(clave);
       if (grupo) {
         grupo.ids.push(fila.id);
       } else {
-        grupos.set(clave, { intentos: fila.intentos, reclamada_en: fila.reclamada_en, ids: [fila.id] });
+        grupos.set(clave, {
+          intentos: fila.intentos,
+          reclamada_en: fila.reclamada_en,
+          ultimo_error: fila.ultimo_error,
+          ids: [fila.id],
+        });
       }
     }
     for (const grupo of grupos.values()) {
@@ -82,7 +99,7 @@ describe("despacho de notificaciones", () => {
           estado: "pendiente",
           intentos: grupo.intentos,
           reclamada_en: grupo.reclamada_en,
-          ultimo_error: null,
+          ultimo_error: grupo.ultimo_error,
         })
         .eq("estado", "enviando")
         .in("id", grupo.ids);
