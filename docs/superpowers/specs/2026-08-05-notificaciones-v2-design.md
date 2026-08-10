@@ -46,10 +46,11 @@ Movimientos financieros: fuera de alcance (decisión explícita).
 
 ## 6. Despacho email + push (en la app Next / Vercel)
 
-- Vercel Cron cada 5 min → route handler protegido (`CRON_SECRET`).
+- Disparo: pg_cron + pg_net en Supabase cada 5 min contra `/api/notificaciones/despachar` (Bearer `CRON_SECRET` desde `config_interna`). *(Enmendado en fase 2: Vercel Cron del plan hobby solo permite frecuencia diaria.)*
 - Toma `pendiente` con `programada_para` null o `<= now()`, canales `email` y `push`.
 - Email: Resend, template simple de texto con link a la app. Push: `web-push` con claves VAPID; suscripción muerta (410) → borrar fila de `push_suscripciones`.
 - Fallo → `intentos + 1`; tras 3 → `fallida`. Recordatorio cuyo turno ya empezó → `descartada`.
+- Claim atómico con estado `enviando` + `reclamada_en` + rescate a los 10 min; re-chequeo de preferencias y vencimiento para filas programadas (§13).
 
 ## 7. UI en la app
 
@@ -82,8 +83,8 @@ Repo/carpeta `bot/` en el mismo repo. Node + TypeScript + `@open-wa/wa-automate`
 
 ## 10. Fases
 
-1. **Núcleo:** migración (tablas + teléfono), `notificar()` en las acciones, página de perfil y avisos, RLS + tests.
-2. **Email:** Resend + cron + templates.
+1. **Núcleo:** migración (tablas + teléfono), `notificar()` en las acciones, página de perfil y avisos, RLS + tests. ✅
+2. **Email:** Resend + cron + templates. ✅
 3. **Push:** service worker + suscripción + despacho.
 4. **Bot WA — avisos:** servicio Docker, sesión, Realtime + polling, envío.
 5. **Bot WA — conversación:** Claude + herramientas + permisos + límites.
@@ -92,10 +93,10 @@ Cada fase termina deployada y usable; el valor no depende de las fases siguiente
 
 ## 11. Criterios de aceptación
 
-- [ ] Reservar una sala genera confirmación por los canales activos del usuario, y el recordatorio llega 24 h antes.
+- [ ] Reservar una sala genera confirmación por los canales activos del usuario, y el recordatorio llega 24 h antes. (email ✔ fase 2; wa/push pendientes)
 - [ ] Cancelar avisa a quien reservó y a quienes administran espacios.
 - [ ] Invitación llega por email; asignación de tarea avisa al asignado.
-- [ ] Apagar un canal en preferencias corta esos envíos.
+- [x] Apagar un canal en preferencias corta esos envíos.
 - [ ] Caída del bot: email/push siguen; al volver, drena pendientes no vencidos y descarta vencidos.
 - [ ] Bot: miembro consulta disponibilidad, reserva y cancela por chat; número desconocido recibe el mensaje fijo; nadie opera fuera de sus permisos (test explícito de cada herramienta).
 - [ ] RLS de tablas nuevas testeada (nadie ve notificaciones ni preferencias ajenas).

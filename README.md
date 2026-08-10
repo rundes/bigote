@@ -33,14 +33,7 @@ App web (Next.js) para que una organización chica reemplace planillas y cuadern
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
    ```
 
-4. **Aplicar las migraciones** (`supabase/migrations/0001` a `0003`: esquema, RLS + helpers, función `crear_organizacion`). Dos formas, cualquiera de las dos deja el proyecto igual:
-
-   - CLI:
-     ```bash
-     npx supabase link --project-ref <ref>
-     npx supabase db push
-     ```
-   - O vía el MCP de Supabase (herramienta `apply_migration`) si estás trabajando con un agente que lo tenga configurado.
+4. **Aplicar las migraciones** (`supabase/migrations/0001` a `0011`, ver detalle y advertencias en la sección [Migraciones](#migraciones) más abajo — `npx supabase db push` **no funciona** en este repo).
 
 5. **Instalar dependencias**:
 
@@ -82,6 +75,28 @@ npm test
 ```
 
 Son tests de RLS (aislamiento entre organizaciones, reglas de reservas) que corren contra el proyecto Supabase real usando las credenciales de `.env.local`. **Requieren que el seed ya esté aplicado** (`npm run seed`) antes de correrlos.
+
+## Migraciones
+
+**`npx supabase db push` no funciona en este repo.** El historial remoto de `supabase_migrations.schema_migrations` tiene versiones con timestamp (`YYYYMMDDHHMMSS`) que quedaron así por haberse aplicado vía MCP/Management API, no por el flujo normal del CLI — el CLI no reconoce ese historial y falla al intentar sincronizar. Las migraciones (`supabase/migrations/0001...sql` en adelante) se aplican manualmente vía la Management API de Supabase:
+
+```
+POST https://api.supabase.com/v1/projects/<project-ref>/database/query
+```
+
+con el SQL de la migración en el body, seguido de un insert en `supabase_migrations.schema_migrations (version, name, statements)` para dejar registro (version = timestamp `YYYYMMDDHHMMSS`, name = el nombre del archivo sin extensión, statements = el SQL). Requiere un token de acceso de Supabase (Management API), no las keys del proyecto.
+
+**Paso manual imprescindible después de aplicar la 0011** (`0011_cron_despacho.sql`): la migración crea la tabla `config_interna` pero **no** carga el secret del cron — nunca se commitea un secreto en una migración. Hay que insertarlo a mano, también vía Management API:
+
+```sql
+insert into config_interna (clave, valor)
+values ('cron_secret', '<el mismo valor de CRON_SECRET en Vercel>')
+on conflict (clave) do update set valor = excluded.valor;
+```
+
+Sin esa fila, el job de `pg_cron` manda `Authorization: Bearer null` al endpoint y el despacho falla en silencio (401), sin ningún error visible salvo revisando `cron.job_run_details`.
+
+**Nota de entorno del cron:** la 0011 tiene la URL de producción (`https://bigote-gilt.vercel.app`) hardcodeada en el `net.http_post` del job `despachar-notificaciones`. Aplicar esta migración a otro entorno (otro proyecto Supabase, staging, etc.) apuntaría el cron de ese entorno a la app de producción — limitación conocida, no hay parametrización todavía.
 
 ## Deploy en Vercel
 
@@ -138,7 +153,10 @@ lib/
 scripts/seed.mjs         seed de demo idempotente
 supabase/migrations/     0001 esquema, 0002 RLS + helpers, 0003 crear_organizacion,
                          0004 RPCs de tareas, 0005 RPCs de reservas + bucket media,
-                         0006 clientes en co-gestión, 0007 movimientos por reserva
+                         0006 clientes en co-gestión, 0007 movimientos por reserva,
+                         0008 notificaciones (outbox), 0009 despacho (claim atómico,
+                         reintentos), 0010 ajustes de despacho, 0011 cron de despacho
+                         (pg_cron + pg_net + config_interna)
 tests/rls/               tests de aislamiento y reglas de reserva contra Supabase real
 docs/superpowers/        specs y planes por fase
 ```
@@ -156,4 +174,4 @@ Este repo se construye por fases documentadas en `docs/superpowers/`:
 
 **v1 completa.** Pendiente de verificación manual (requiere Google OAuth configurado en el Dashboard): switcher multi-org con `admin@demo.test` e identity linking Google + magic link. Ideas para v2 en el spec §6 (cobros online, notificaciones, tope de horas gratis, reportes).
 
-v2 en curso — fase 1 (núcleo de notificaciones) completa: outbox + triggers + perfil y avisos. Spec: `docs/superpowers/specs/2026-08-05-notificaciones-v2-design.md`.
+v2 en curso — fase 1 (núcleo) y **fase 2 (email) completas**: outbox + triggers + perfil y avisos (fase 1), dispatcher Resend con claim atómico y reintentos + pg_cron cada 5 min (fase 2). Falta verificar el dominio `tronador.net.ar` en Resend para pasar `EMAIL_FROM` de `onboarding@resend.dev` (hoy solo llega al dueño de la cuenta Resend) a `bigote <avisos@tronador.net.ar>` — al verificar: cambiar la env en Vercel y redeploy. Spec: `docs/superpowers/specs/2026-08-05-notificaciones-v2-design.md`.
