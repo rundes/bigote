@@ -49,6 +49,46 @@ export function renderEmail(n: NotificacionEmail): { asunto: string; texto: stri
         asunto: `Hecha: ${p.titulo}`,
         texto: `"${p.titulo}" (${p.proyecto}) quedó marcada como hecha.\n\nVer el proyecto: ${APP_URL}`,
       };
+    case "reserva_esperando_pago": {
+      // Los datos de la cuenta vienen congelados en el payload (migración 0014):
+      // si mañana cambia el alias, este mail sigue coincidiendo con lo enviado.
+      const cuenta = [
+        p.alias ? `Alias: ${p.alias}` : "",
+        p.cbu ? `CBU: ${p.cbu}` : "",
+        p.titular ? `Titular: ${p.titular}` : "",
+        p.banco ? `Banco: ${p.banco}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const vence = p.vence_at
+        ? new Date(String(p.vence_at)).toLocaleString("es-AR", {
+            timeZone: "America/Argentina/Buenos_Aires",
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : null;
+      const extra = p.instrucciones ? `\n\n${p.instrucciones}` : "";
+      return {
+        asunto: `Reservá con pago: ${p.sala}`,
+        texto:
+          `Guardamos ${p.sala} (${p.edificio}) para el ${fechaLegible(p.fecha, p.hora_inicio)}, ${p.horas} h.\n\n` +
+          `Para confirmarla, transferí $${p.costo}:\n\n${cuenta}\n\n` +
+          (vence ? `El horario queda reservado hasta el ${vence}. Pasado ese plazo se libera.` : "") +
+          `${extra}\n\nVer la reserva: ${APP_URL}`,
+      };
+    }
+    case "reserva_vencida":
+      return {
+        asunto: `Se liberó tu reserva: ${p.sala}`,
+        texto: `No llegamos a registrar el pago, así que se liberó ${p.sala} (${p.edificio}) del ${fechaLegible(p.fecha, p.hora_inicio)}.\n\nSi todavía la querés, reservá de nuevo: ${APP_URL}`,
+      };
+    case "pago_registrado":
+      return {
+        asunto: `Pago registrado: ${p.sala}`,
+        texto: `Recibimos el pago y tu reserva de ${p.sala} quedó confirmada.\n\nVer tus reservas: ${APP_URL}`,
+      };
     default:
       return {
         asunto: "Novedades en bigote",
