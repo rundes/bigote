@@ -96,7 +96,14 @@ on conflict (clave) do update set valor = excluded.valor;
 
 Sin esa fila, el job de `pg_cron` manda `Authorization: Bearer null` al endpoint y el despacho falla en silencio (401), sin ningún error visible salvo revisando `cron.job_run_details`.
 
-**Nota de entorno del cron:** la 0011 tiene la URL de producción (`https://bigote-gilt.vercel.app`) hardcodeada en el `net.http_post` del job `despachar-notificaciones`. Aplicar esta migración a otro entorno (otro proyecto Supabase, staging, etc.) apuntaría el cron de ese entorno a la app de producción — limitación conocida, no hay parametrización todavía.
+**URL del cron:** la 0011 tenía la URL de producción hardcodeada en el `net.http_post` del job `despachar-notificaciones`. Al cambiar el dominio de Vercel el cron quedó posteando contra un 404 y las notificaciones dejaron de salir en silencio (pg_cron no avisa; el rastro queda en `cron.job_run_details`). La 0017 la movió a `config_interna`, junto al secret:
+
+```sql
+insert into config_interna (clave, valor) values ('app_url', 'https://<dominio>')
+on conflict (clave) do update set valor = excluded.valor;
+```
+
+Cambiar de dominio ahora es un update de esa fila. Al aplicar las migraciones a otro entorno, cargar ahí su propia `app_url`.
 
 ## Deploy en Vercel
 

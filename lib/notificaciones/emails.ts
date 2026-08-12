@@ -3,7 +3,10 @@ import { envolver, aTexto, type Contenido, type Detalle } from "./plantilla";
 // Templates y decisiones de envío. Puro: sin red ni DB, para
 // testear sin mocks. El dispatcher (route handler) orquesta alrededor.
 
-const APP_URL = "https://bigote-gilt.vercel.app";
+// Del entorno, no hardcodeada: la URL ya quedó obsoleta una vez al cambiar el
+// dominio de Vercel, y los links de los mails apuntaron a un 404 sin que nada
+// avisara. El default es solo para tests, donde no hay env.
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://nuevatierra.vercel.app";
 
 export type NotificacionEmail = {
   evento: string;
