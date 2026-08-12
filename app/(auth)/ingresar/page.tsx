@@ -1,13 +1,15 @@
 import { FormIngreso } from "./FormIngreso";
 import { Logo } from "@/componentes/marca/Logo";
+import { destinoSeguro } from "@/lib/rutas";
 import { APP_VERSION } from "@/lib/version";
 
 export default async function PaginaIngresar({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  const destino = destinoSeguro(next);
   const errorInicial =
     error === "enlace" ? "El enlace venció o ya se usó. Pedí uno nuevo." : null;
 
@@ -23,7 +25,7 @@ export default async function PaginaIngresar({
           </h1>
 
           <div className="p-6">
-            <FormIngreso errorInicial={errorInicial} />
+            <FormIngreso errorInicial={errorInicial} destino={destino} />
           </div>
         </div>
 

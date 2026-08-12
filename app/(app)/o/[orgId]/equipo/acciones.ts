@@ -193,6 +193,7 @@ function leerPermisos(formData: FormData): Permisos {
     finanzas: formData.get("finanzas") === "on",
     espacios: formData.get("espacios") === "on",
     admin: formData.get("admin") === "on",
+    inventario: formData.get("inventario") === "on",
   };
 }
 

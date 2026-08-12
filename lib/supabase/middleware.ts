@@ -31,8 +31,13 @@ export async function actualizarSesion(request: NextRequest) {
     if (request.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "no autorizado" }, { status: 401 });
     }
+    // Conservar el destino: escanear un QR sin sesión debe volver al ítem
+    // después de ingresar, no dejar a la persona buscándolo a mano.
     const url = request.nextUrl.clone();
+    const destino = request.nextUrl.pathname + request.nextUrl.search;
     url.pathname = "/ingresar";
+    url.search = "";
+    if (destino !== "/" && destino !== "") url.searchParams.set("next", destino);
     return NextResponse.redirect(url);
   }
   return respuesta;

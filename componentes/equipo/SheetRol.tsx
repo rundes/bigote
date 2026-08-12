@@ -13,6 +13,7 @@ const PERMISOS: { clave: string; etiqueta: string; nota?: string }[] = [
   { clave: "equipo", etiqueta: "Equipo y track record" },
   { clave: "finanzas", etiqueta: "Finanzas" },
   { clave: "espacios", etiqueta: "Espacios" },
+  { clave: "inventario", etiqueta: "Inventario", nota: "Cargar, prestar y despachar cosas." },
   { clave: "admin", etiqueta: "Administración total", nota: "Incluye gestionar miembros y roles." },
 ];
 

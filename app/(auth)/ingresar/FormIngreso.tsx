@@ -4,7 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 
-export function FormIngreso({ errorInicial }: { errorInicial?: string | null }) {
+export function FormIngreso({
+  errorInicial,
+  destino = "/",
+}: {
+  errorInicial?: string | null;
+  /** Ruta a la que volver después de ingresar (validada server-side). */
+  destino?: string;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +26,7 @@ export function FormIngreso({ errorInicial }: { errorInicial?: string | null }) 
       const supabase = crearClienteNavegador();
       const { error: errorAuth } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destino)}` },
       });
       if (errorAuth) {
         setError("Google no está configurado todavía. Probá con tu email.");
@@ -43,7 +50,7 @@ export function FormIngreso({ errorInicial }: { errorInicial?: string | null }) 
         setError("No pudimos ingresarte. Revisá el email y la contraseña.");
         return;
       }
-      router.push("/");
+      router.push(destino);
       router.refresh();
     } catch {
       setError("No pudimos conectar. Probá de nuevo.");
@@ -63,7 +70,7 @@ export function FormIngreso({ errorInicial }: { errorInicial?: string | null }) 
       const supabase = crearClienteNavegador();
       const { error: errorAuth } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(destino)}` },
       });
       if (errorAuth) {
         setError("No pudimos enviarte el enlace. Probá de nuevo.");

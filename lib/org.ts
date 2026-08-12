@@ -3,6 +3,7 @@ import { crearClienteServidor } from "@/lib/supabase/server";
 
 export type Permisos = {
   proyectos: boolean; equipo: boolean; finanzas: boolean; espacios: boolean; admin: boolean;
+  inventario: boolean;
 };
 export type ContextoOrg = {
   org: { id: string; nombre: string };

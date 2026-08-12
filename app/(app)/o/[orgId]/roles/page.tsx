@@ -3,11 +3,15 @@ import { obtenerContextoOrg } from "@/lib/org";
 import { listarRoles } from "@/lib/equipo";
 import { SheetRol } from "@/componentes/equipo/SheetRol";
 
-const ETIQUETAS: { clave: "proyectos" | "equipo" | "finanzas" | "espacios" | "admin"; nombre: string }[] = [
+const ETIQUETAS: {
+  clave: "proyectos" | "equipo" | "finanzas" | "espacios" | "inventario" | "admin";
+  nombre: string;
+}[] = [
   { clave: "proyectos", nombre: "proyectos" },
   { clave: "equipo", nombre: "equipo" },
   { clave: "finanzas", nombre: "finanzas" },
   { clave: "espacios", nombre: "espacios" },
+  { clave: "inventario", nombre: "inventario" },
   { clave: "admin", nombre: "admin" },
 ];
 

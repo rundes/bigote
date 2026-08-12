@@ -8,7 +8,9 @@ import type { ContextoOrg } from "@/lib/org";
 export function NavInferior({ orgId, contexto }: { orgId: string; contexto: ContextoOrg }) {
   const pathname = usePathname();
   const visibles = ITEMS_NAV.filter(
-    (item) => item.permiso === null || contexto.permisos[item.permiso]
+    (item) =>
+      !item.soloEscritorio &&
+      (item.permiso === null || contexto.permisos[item.permiso])
   );
 
   return (
