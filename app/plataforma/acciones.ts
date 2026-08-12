@@ -87,3 +87,72 @@ export async function crearOrgConAdmin(
 
   revalidatePath("/plataforma");
 }
+
+export async function editarOrg(
+  orgId: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  await verificarSuperAdmin();
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  const tipo = String(formData.get("tipo") ?? "").trim();
+  if (!nombre) return { error: "Poné un nombre." };
+  if (!["empresa", "asociacion_civil", "otro"].includes(tipo)) {
+    return { error: "Elegí un tipo válido." };
+  }
+
+  // Cliente admin: la policy organizaciones_admin exige `tiene_permiso(id,
+  // 'admin')`, y un super admin no es necesariamente miembro de la org.
+  const admin = crearClienteAdmin();
+  const { error } = await admin
+    .from("organizaciones")
+    .update({ nombre, tipo })
+    .eq("id", orgId);
+  if (error) return { error: "No pudimos guardar los cambios." };
+
+  revalidatePath("/plataforma");
+  return {};
+}
+
+/**
+ * Borra una organización y todo lo que cuelga de ella. Es irreversible: el
+ * cascade se lleva roles, membresías, proyectos, tareas, clientes, edificios,
+ * salas, reservas, planes, movimientos, notificaciones, inventario y cobros.
+ *
+ * Pide el nombre tipeado porque un click sobre el botón equivocado en una
+ * lista no debería poder vaciar una organización entera.
+ */
+export async function borrarOrg(
+  orgId: string,
+  nombreConfirmado: string
+): Promise<{ error?: string }> {
+  await verificarSuperAdmin();
+
+  const admin = crearClienteAdmin();
+  const { data: org } = await admin
+    .from("organizaciones")
+    .select("nombre")
+    .eq("id", orgId)
+    .maybeSingle<{ nombre: string }>();
+  if (!org) return { error: "Esa organización ya no existe." };
+
+  if (nombreConfirmado.trim() !== org.nombre) {
+    return { error: "El nombre no coincide. Escribilo exactamente igual." };
+  }
+
+  const { error } = await admin.from("organizaciones").delete().eq("id", orgId);
+  if (error) {
+    // org_gestora_id no cascadea: si esta org gestiona el edificio de otra, la
+    // FK lo impide. Es correcto que falle, pero el mensaje tiene que explicarlo.
+    if (error.code === "23503") {
+      return {
+        error:
+          "No se puede borrar: esta organización gestiona edificios de otra. Sacale la gestión primero.",
+      };
+    }
+    return { error: "No pudimos borrar la organización." };
+  }
+
+  revalidatePath("/plataforma");
+  return {};
+}

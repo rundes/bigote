@@ -9,21 +9,45 @@ import { SheetNuevoProyecto } from "@/componentes/proyectos/SheetNuevoProyecto";
 type Proyecto = Awaited<ReturnType<typeof listarProyectos>>[number];
 
 function FilaProyecto({ orgId, proyecto }: { orgId: string; proyecto: Proyecto }) {
+  const archivado = proyecto.estado === "archivado";
   return (
     <Link
       href={`/o/${orgId}/tareas/${proyecto.id}`}
-      className="flex min-h-11 items-center justify-between gap-3 border-b border-linea py-3 last:border-b-0"
+      className="flex min-h-11 items-center gap-3 py-3 transition hover:bg-linea/20"
     >
-      <span
-        className={`text-sm ${proyecto.estado === "archivado" ? "text-tinta-suave" : "text-tinta"}`}
-      >
-        {proyecto.nombre}
-        {proyecto.estado === "archivado" && " (archivado)"}
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-sm ${archivado ? "text-tinta-suave" : "font-medium text-tinta"}`}>
+          {proyecto.nombre}
+        </span>
+        <span className="block text-xs text-tinta-suave">
+          {proyecto.miembros} {proyecto.miembros === 1 ? "persona" : "personas"}
+          {archivado && " · archivado"}
+        </span>
       </span>
-      <span className="shrink-0 text-xs text-tinta-suave">
-        {proyecto.pendientes} pendientes · {proyecto.miembros} personas
+      {/* El pendiente es el dato que se busca al escanear la lista: va con peso
+          y alineado a la derecha, no perdido en el gris del subtítulo. */}
+      <span className="shrink-0 text-right">
+        <span
+          className={`block text-sm font-semibold tabular-nums ${
+            proyecto.pendientes === 0 ? "text-tinta-suave" : "text-tinta"
+          }`}
+        >
+          {proyecto.pendientes}
+        </span>
+        <span className="block text-xs text-tinta-suave">
+          {proyecto.pendientes === 1 ? "pendiente" : "pendientes"}
+        </span>
       </span>
     </Link>
+  );
+}
+
+function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[13px] text-tinta-suave">{titulo}</p>
+      <div className="mt-1 flex flex-col">{children}</div>
+    </div>
   );
 }
 
@@ -45,20 +69,34 @@ export default async function PaginaTareas({
   const activos = proyectos.filter((p) => p.estado !== "archivado");
   const archivados = proyectos.filter((p) => p.estado === "archivado");
   const sinTareas = asignadas.length === 0 && pools.length === 0;
+  const pendientesTotales = activos.reduce((a, p) => a + p.pendientes, 0);
 
   return (
     <div className="flex flex-col gap-10">
-      <h1 className="text-2xl font-semibold text-tinta">Tareas</h1>
+      <div>
+        <h1 className="text-2xl font-semibold text-tinta">Tareas</h1>
+        <p className="mt-1 text-sm text-tinta-suave">
+          {asignadas.length > 0
+            ? `Tenés ${asignadas.length} ${asignadas.length === 1 ? "tarea asignada" : "tareas asignadas"}`
+            : "No tenés tareas asignadas"}
+          {" · "}
+          {pendientesTotales} {pendientesTotales === 1 ? "pendiente" : "pendientes"} en{" "}
+          {activos.length} {activos.length === 1 ? "proyecto" : "proyectos"}
+        </p>
+      </div>
 
-      <section className="flex flex-col gap-3">
+      <section>
         <h2 className="text-lg font-semibold text-tinta">Tus tareas</h2>
 
         {sinTareas ? (
-          <p className="text-sm text-tinta-suave">Estás al día.</p>
+          <p className="mt-3 text-sm text-tinta-suave">
+            Estás al día. Cuando alguien te asigne algo, o quede una tarea libre en tus
+            proyectos, aparece acá.
+          </p>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="mt-3 flex flex-col gap-5">
             {asignadas.length > 0 && (
-              <div className="flex flex-col">
+              <Grupo titulo="Asignadas a vos">
                 {asignadas.map((t) => (
                   <FilaTarea
                     key={t.id}
@@ -69,46 +107,41 @@ export default async function PaginaTareas({
                     subtitulo={t.proyecto.nombre}
                   />
                 ))}
-              </div>
+              </Grupo>
             )}
 
             {pools.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-tinta-suave">
-                  Del pool de tus proyectos
-                </p>
-                <div className="flex flex-col">
-                  {pools.map((t) => (
-                    <FilaTarea
-                      key={t.id}
-                      tarea={t}
-                      accion="tomar"
-                      orgId={orgId}
-                      proyectoId={t.proyecto.id}
-                      subtitulo={t.proyecto.nombre}
-                    />
-                  ))}
-                </div>
-              </div>
+              <Grupo titulo="Libres, para tomar">
+                {pools.map((t) => (
+                  <FilaTarea
+                    key={t.id}
+                    tarea={t}
+                    accion="tomar"
+                    orgId={orgId}
+                    proyectoId={t.proyecto.id}
+                    subtitulo={t.proyecto.nombre}
+                  />
+                ))}
+              </Grupo>
             )}
           </div>
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+      <section>
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-tinta">Proyectos</h2>
           {puedeGestionar && <SheetNuevoProyecto orgId={orgId} />}
         </div>
 
         {proyectos.length === 0 ? (
-          <p className="text-sm text-tinta-suave">
+          <p className="mt-3 text-sm text-tinta-suave">
             Todavía no hay proyectos. Creá el primero y sumá al equipo.
           </p>
         ) : (
-          <>
+          <div className="mt-3">
             {activos.length > 0 && (
-              <div className="flex flex-col">
+              <div className="divide-y divide-linea border-y border-linea">
                 {activos.map((p) => (
                   <FilaProyecto key={p.id} orgId={orgId} proyecto={p} />
                 ))}
@@ -116,7 +149,7 @@ export default async function PaginaTareas({
             )}
 
             {archivados.length > 0 && (
-              <details className="group">
+              <details className="group mt-2">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 py-3 text-sm text-tinta-suave [&::-webkit-details-marker]:hidden">
                   <ChevronRight
                     size={20}
@@ -125,14 +158,14 @@ export default async function PaginaTareas({
                   />
                   Archivados ({archivados.length})
                 </summary>
-                <div className="flex flex-col">
+                <div className="divide-y divide-linea border-y border-linea">
                   {archivados.map((p) => (
                     <FilaProyecto key={p.id} orgId={orgId} proyecto={p} />
                   ))}
                 </div>
               </details>
             )}
-          </>
+          </div>
         )}
       </section>
     </div>

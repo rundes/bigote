@@ -3,12 +3,7 @@ import { redirect } from "next/navigation";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { FormCrearOrg } from "./FormCrearOrg";
-
-const ETIQUETAS_TIPO: Record<string, string> = {
-  empresa: "Empresa",
-  asociacion_civil: "Asociación civil",
-  otro: "Otro",
-};
+import { FilaOrg, type ResumenOrg } from "./FilaOrg";
 
 export default async function PaginaPlataforma() {
   const supabase = await crearClienteServidor();
@@ -32,15 +27,36 @@ export default async function PaginaPlataforma() {
     .select("id, nombre, tipo, created_at")
     .order("created_at", { ascending: false });
   const admin = crearClienteAdmin();
-  const { data: membresias } = await admin
-    .from("membresias")
-    .select("org_id")
-    .eq("activo", true);
+  const [{ data: membresias }, { data: proyectos }, { data: edificios }, { data: articulos }] =
+    await Promise.all([
+      admin.from("membresias").select("org_id").eq("activo", true),
+      admin.from("proyectos").select("org_id"),
+      admin.from("edificios").select("org_propietaria_id"),
+      admin.from("inventario_articulos").select("org_id"),
+    ]);
 
-  const conteos = new Map<string, number>();
-  for (const m of membresias ?? []) {
-    conteos.set(m.org_id, (conteos.get(m.org_id) ?? 0) + 1);
+  function contar(filas: { org_id: string }[] | null): Map<string, number> {
+    const m = new Map<string, number>();
+    for (const f of filas ?? []) m.set(f.org_id, (m.get(f.org_id) ?? 0) + 1);
+    return m;
   }
+  const conteos = contar(membresias);
+  const porProyectos = contar(proyectos);
+  const porArticulos = contar(articulos);
+  const porEdificios = new Map<string, number>();
+  for (const e of (edificios ?? []) as { org_propietaria_id: string }[]) {
+    porEdificios.set(e.org_propietaria_id, (porEdificios.get(e.org_propietaria_id) ?? 0) + 1);
+  }
+
+  const resumenes: ResumenOrg[] = (orgs ?? []).map((o) => ({
+    id: o.id,
+    nombre: o.nombre,
+    tipo: o.tipo,
+    miembros: conteos.get(o.id) ?? 0,
+    proyectos: porProyectos.get(o.id) ?? 0,
+    edificios: porEdificios.get(o.id) ?? 0,
+    articulos: porArticulos.get(o.id) ?? 0,
+  }));
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-8 px-4 py-10">
@@ -56,23 +72,10 @@ export default async function PaginaPlataforma() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium text-tinta-suave">Organizaciones</h2>
-        {orgs && orgs.length > 0 ? (
+        {resumenes.length > 0 ? (
           <ul className="flex flex-col gap-2">
-            {orgs.map((org) => (
-              <li
-                key={org.id}
-                className="flex items-center justify-between rounded-lg border border-linea bg-superficie px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-tinta">{org.nombre}</p>
-                  <p className="text-xs text-tinta-suave">
-                    {ETIQUETAS_TIPO[org.tipo] ?? org.tipo}
-                  </p>
-                </div>
-                <span className="text-xs text-tinta-suave">
-                  {conteos.get(org.id) ?? 0} miembro{(conteos.get(org.id) ?? 0) === 1 ? "" : "s"}
-                </span>
-              </li>
+            {resumenes.map((org) => (
+              <FilaOrg key={org.id} org={org} />
             ))}
           </ul>
         ) : (
