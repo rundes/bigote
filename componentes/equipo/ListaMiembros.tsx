@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import type { Miembro, Rol } from "@/lib/equipo";
 import {
   cambiarRol,
   desactivarMiembro,
   reactivarMiembro,
+  editarMiembro,
 } from "@/app/(app)/o/[orgId]/equipo/acciones";
 import { useToast } from "@/componentes/ui/Toast";
 
@@ -76,6 +77,7 @@ export function ListaMiembros({
   const { mostrar } = useToast();
   const [enCurso, iniciar] = useTransition();
   const [aDesactivar, setADesactivar] = useState<Miembro | null>(null);
+  const [editando, setEditando] = useState<string | null>(null);
 
   function ejecutar(accion: () => Promise<{ error?: string }>, mensajeOk?: string) {
     iniciar(async () => {
@@ -103,16 +105,60 @@ export function ListaMiembros({
           }`}
         >
           <div className="min-w-0 flex-1 basis-40">
-            <p className="truncate text-sm font-medium text-tinta">
-              {m.nombre || m.email}
-              {m.perfil_id === perfilPropioId && (
-                <span className="ml-1.5 text-xs font-normal text-tinta-suave">(vos)</span>
-              )}
-            </p>
-            <p className="truncate text-sm text-tinta-suave">
-              {m.email}
-              {!m.activo && " · Sin acceso"}
-            </p>
+            {editando === m.perfil_id ? (
+              <form
+                action={(fd) => {
+                  ejecutar(() => editarMiembro(orgId, m.perfil_id, fd), "Nombre actualizado.");
+                  setEditando(null);
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  name="nombre"
+                  defaultValue={m.nombre}
+                  autoFocus
+                  aria-label={`Nombre de ${m.email}`}
+                  className="h-11 min-w-0 flex-1 rounded-lg border border-linea bg-superficie px-2 text-sm text-tinta focus:border-acento focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={enCurso}
+                  className="h-11 shrink-0 rounded-lg bg-acento px-3 text-sm font-medium text-acento-tinta disabled:opacity-60"
+                >
+                  Guardar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditando(null)}
+                  className="h-11 shrink-0 px-2 text-sm text-tinta-suave"
+                >
+                  Cancelar
+                </button>
+              </form>
+            ) : (
+              <>
+                <p className="flex items-center gap-1 truncate text-sm font-medium text-tinta">
+                  {m.nombre || m.email}
+                  {m.perfil_id === perfilPropioId && (
+                    <span className="text-xs font-normal text-tinta-suave">(vos)</span>
+                  )}
+                  {esAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setEditando(m.perfil_id)}
+                      aria-label={`Editar nombre de ${m.nombre || m.email}`}
+                      className="shrink-0 rounded p-1 text-tinta-suave transition hover:text-acento"
+                    >
+                      <Pencil size={14} strokeWidth={1.75} />
+                    </button>
+                  )}
+                </p>
+                <p className="truncate text-sm text-tinta-suave">
+                  {m.email}
+                  {!m.activo && " · Sin acceso"}
+                </p>
+              </>
+            )}
           </div>
 
           {esAdmin ? (

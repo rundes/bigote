@@ -185,7 +185,7 @@ describe("inventario: stock derivado, reglas de despacho y RLS", () => {
       .select("estado")
       .eq("id", paqueteId)
       .single();
-    expect(paq.estado).toBe("abierto");
+    expect(paq!.estado).toBe("abierto");
   });
 
   it("despachar descuenta el stock y cierra el paquete; después no se toca", async () => {

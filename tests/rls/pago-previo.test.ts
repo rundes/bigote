@@ -121,9 +121,9 @@ describe("pago previo: retención del horario, vencimiento e ingreso", () => {
       .select("estado, vence_at, costo")
       .eq("id", id)
       .single();
-    expect(reserva.estado).toBe("esperando_pago");
-    expect(reserva.vence_at).not.toBeNull();
-    expect(Number(reserva.costo)).toBe(2000);
+    expect(reserva!.estado).toBe("esperando_pago");
+    expect(reserva!.vence_at).not.toBeNull();
+    expect(Number(reserva!.costo)).toBe(2000);
 
     // El ingreso no debe existir todavía: nadie pagó.
     const { data: movs } = await admin.from("movimientos").select("id").eq("reserva_id", id);
@@ -155,8 +155,8 @@ describe("pago previo: retención del horario, vencimiento e ingreso", () => {
       .single();
 
     const { error } = await adminUser.rpc("registrar_pago_reserva", {
-      reserva: reserva.id,
-      monto: Number(reserva.costo),
+      reserva: reserva!.id,
+      monto: Number(reserva!.costo),
       metodo: "transferencia",
       comprobante: null,
       nota: "",
@@ -166,14 +166,14 @@ describe("pago previo: retención del horario, vencimiento e ingreso", () => {
     const { data: despues } = await admin
       .from("reservas")
       .select("estado")
-      .eq("id", reserva.id)
+      .eq("id", reserva!.id)
       .single();
-    expect(despues.estado).toBe("confirmada");
+    expect(despues!.estado).toBe("confirmada");
 
     const { data: movs } = await admin
       .from("movimientos")
       .select("monto, tipo")
-      .eq("reserva_id", reserva.id);
+      .eq("reserva_id", reserva!.id);
     expect(movs ?? []).toHaveLength(1);
     expect(Number(movs![0].monto)).toBe(2000);
     expect(movs![0].tipo).toBe("ingreso");
@@ -211,7 +211,7 @@ describe("pago previo: retención del horario, vencimiento e ingreso", () => {
     await admin
       .from("reservas")
       .update({ vence_at: new Date(Date.now() - 60_000).toISOString() })
-      .eq("id", pendiente.id);
+      .eq("id", pendiente!.id);
 
     const { error: errCron } = await admin.rpc("vencer_reservas_impagas");
     expect(errCron).toBeNull();
@@ -219,9 +219,9 @@ describe("pago previo: retención del horario, vencimiento e ingreso", () => {
     const { data: vencida } = await admin
       .from("reservas")
       .select("estado")
-      .eq("id", pendiente.id)
+      .eq("id", pendiente!.id)
       .single();
-    expect(vencida.estado).toBe("vencida");
+    expect(vencida!.estado).toBe("vencida");
 
     // El horario quedó libre: la misma franja vuelve a entrar.
     const { error } = await adminUser.rpc("crear_reserva", {
@@ -245,8 +245,8 @@ describe("pago previo: retención del horario, vencimiento e ingreso", () => {
       .single();
 
     const { error } = await adminUser.rpc("registrar_pago_reserva", {
-      reserva: vencida.id,
-      monto: Number(vencida.costo),
+      reserva: vencida!.id,
+      monto: Number(vencida!.costo),
       metodo: "transferencia",
       comprobante: null,
       nota: "",

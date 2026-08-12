@@ -4,21 +4,28 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus, X } from "lucide-react";
 import type { Rol } from "@/lib/equipo";
-import { invitarMiembro } from "@/app/(app)/o/[orgId]/equipo/acciones";
+import { invitarMiembro, altaDirecta } from "@/app/(app)/o/[orgId]/equipo/acciones";
 import { useToast } from "@/componentes/ui/Toast";
 
 type Estado = { error?: string } | null;
 
 export function SheetInvitar({ orgId, roles }: { orgId: string; roles: Rol[] }) {
   const [abierto, setAbierto] = useState(false);
+  // "invitar" manda el mail con enlace; "directa" crea la cuenta con una
+  // contraseña puesta acá, para cuando el mail no llega o la persona no tiene
+  // acceso a su casilla en el momento.
+  const [modo, setModo] = useState<"invitar" | "directa">("invitar");
   const router = useRouter();
   const { mostrar } = useToast();
 
   async function accion(_previo: Estado, formData: FormData): Promise<Estado> {
-    const resultado = await invitarMiembro(orgId, formData);
+    const resultado =
+      modo === "invitar"
+        ? await invitarMiembro(orgId, formData)
+        : await altaDirecta(orgId, formData);
     if (resultado.error) return resultado;
     setAbierto(false);
-    mostrar("Invitación enviada.");
+    mostrar(modo === "invitar" ? "Invitación enviada." : "Cuenta creada.");
     router.refresh();
     return null;
   }
@@ -66,7 +73,40 @@ export function SheetInvitar({ orgId, roles }: { orgId: string; roles: Rol[] }) 
               </button>
             </div>
 
+            <div className="mb-4 flex gap-2">
+              {(["invitar", "directa"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setModo(m)}
+                  aria-pressed={modo === m}
+                  className={`flex h-9 flex-1 items-center justify-center rounded-lg text-sm transition ${
+                    modo === m
+                      ? "bg-acento/12 font-medium text-acento"
+                      : "border border-linea text-tinta-suave"
+                  }`}
+                >
+                  {m === "invitar" ? "Por email" : "Con contraseña"}
+                </button>
+              ))}
+            </div>
+
             <form action={enviarAccion} className="flex flex-col gap-4">
+              {modo === "directa" && (
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="alta-nombre" className="text-[13px] text-tinta-suave">
+                    Nombre
+                  </label>
+                  <input
+                    id="alta-nombre"
+                    name="nombre"
+                    required
+                    placeholder="Nombre y apellido"
+                    className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
+                  />
+                </div>
+              )}
+
               <div className="flex flex-col gap-1">
                 <label htmlFor="invitar-email" className="text-[13px] text-tinta-suave">
                   Email
@@ -101,9 +141,28 @@ export function SheetInvitar({ orgId, roles }: { orgId: string; roles: Rol[] }) 
                 </select>
               </div>
 
+              {modo === "directa" && (
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="alta-password" className="text-[13px] text-tinta-suave">
+                    Contraseña provisoria
+                  </label>
+                  <input
+                    id="alta-password"
+                    name="password"
+                    type="text"
+                    required
+                    minLength={8}
+                    autoComplete="off"
+                    placeholder="Al menos 8 caracteres"
+                    className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
+                  />
+                </div>
+              )}
+
               <p className="text-sm text-tinta-suave">
-                Le llega un email con un enlace para entrar. Si ya tiene cuenta, se suma directo con
-                el rol elegido.
+                {modo === "invitar"
+                  ? "Le llega un email con un enlace para entrar. Si ya tiene cuenta, se suma directo con el rol elegido."
+                  : "Se crea la cuenta lista para usar y le pasás la contraseña vos. Decile que la cambie desde Perfil al entrar. Si ya tiene cuenta, no se le toca la contraseña: solo se la suma a la organización."}
               </p>
 
               <button
@@ -111,7 +170,9 @@ export function SheetInvitar({ orgId, roles }: { orgId: string; roles: Rol[] }) 
                 disabled={enCurso}
                 className="h-11 w-full rounded-lg bg-acento text-sm font-medium text-acento-tinta transition hover:opacity-90 disabled:opacity-60"
               >
-                {enCurso ? "Invitando…" : "Mandá la invitación"}
+                {enCurso
+                  ? modo === "invitar" ? "Invitando…" : "Creando…"
+                  : modo === "invitar" ? "Mandá la invitación" : "Creá la cuenta"}
               </button>
 
               {estado?.error && <p className="text-sm text-peligro">{estado.error}</p>}

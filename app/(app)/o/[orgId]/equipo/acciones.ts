@@ -238,3 +238,109 @@ export async function editarRol(orgId: string, rolId: string, formData: FormData
   revalidarEquipo(orgId);
   return {};
 }
+
+/**
+ * Corrige el nombre de un miembro. Va por el cliente admin a propósito: la
+ * policy `perfiles_update` es `id = auth.uid()`, así que ni quien administra
+ * puede arreglar un nombre mal cargado desde la sesión normal.
+ */
+export async function editarMiembro(
+  orgId: string,
+  perfilId: string,
+  formData: FormData
+): Promise<Resultado> {
+  const guard = await verificarAdmin(orgId);
+  if (guard) return guard;
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!nombre) return { error: "Poné un nombre." };
+  if (nombre.length > 80) return { error: "El nombre es muy largo." };
+
+  // Solo si es miembro de esta organización: sin este chequeo, quien administra
+  // una org podría renombrar a cualquier persona de la plataforma.
+  const supabase = await crearClienteServidor();
+  const { data: membresia } = await supabase
+    .from("membresias")
+    .select("perfil_id")
+    .eq("org_id", orgId)
+    .eq("perfil_id", perfilId)
+    .maybeSingle();
+  if (!membresia) return { error: "Esa persona no es de la organización." };
+
+  const admin = crearClienteAdmin();
+  const { error } = await admin.from("perfiles").update({ nombre }).eq("id", perfilId);
+  if (error) return { error: "No pudimos guardar el nombre." };
+
+  revalidarEquipo(orgId);
+  return {};
+}
+
+/**
+ * Alta directa: crea la cuenta con una contraseña puesta por quien administra,
+ * sin pasar por el mail de invitación. Existe para cuando el mail no llega o la
+ * persona no tiene acceso a su casilla en el momento.
+ */
+export async function altaDirecta(orgId: string, formData: FormData): Promise<Resultado> {
+  const guard = await verificarAdmin(orgId);
+  if (guard) return guard;
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email || !email.includes("@")) return { error: "Escribí un email válido." };
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!nombre) return { error: "Poné un nombre." };
+
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "La contraseña tiene que tener al menos 8 caracteres." };
+
+  const rolId = String(formData.get("rol_id") ?? "");
+  if (!(await rolDeLaOrg(orgId, rolId))) return { error: "Elegí un rol de la organización." };
+
+  const admin = crearClienteAdmin();
+  const { data: creado, error: errorCrear } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  let perfilId: string;
+  if (errorCrear) {
+    const yaExiste =
+      errorCrear.status === 422 || /already.*registered/i.test(errorCrear.message);
+    if (!yaExiste) return { error: errorCrear.message };
+    // Ya tiene cuenta: no se le pisa la contraseña, solo se lo suma a la org.
+    const { data: usuarios, error: errorList } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    if (errorList) return { error: "No pudimos ubicar al usuario existente." };
+    const existente = usuarios.users.find((u) => u.email === email);
+    if (!existente) return { error: "Ese email ya está registrado pero no lo pudimos encontrar." };
+    perfilId = existente.id;
+  } else {
+    perfilId = creado.user.id;
+  }
+
+  await admin.from("perfiles").update({ nombre }).eq("id", perfilId);
+
+  const supabase = await crearClienteServidor();
+  const { data: membresia } = await supabase
+    .from("membresias")
+    .select("activo")
+    .eq("org_id", orgId)
+    .eq("perfil_id", perfilId)
+    .maybeSingle<{ activo: boolean }>();
+
+  if (membresia?.activo) return { error: "Ya es parte de la organización." };
+
+  const { error } = membresia
+    ? await supabase
+        .from("membresias")
+        .update({ activo: true, rol_id: rolId })
+        .eq("org_id", orgId)
+        .eq("perfil_id", perfilId)
+    : await supabase
+        .from("membresias")
+        .insert({ org_id: orgId, perfil_id: perfilId, rol_id: rolId, activo: true });
+  if (error) return { error: error.message };
+
+  revalidarEquipo(orgId);
+  return {};
+}
