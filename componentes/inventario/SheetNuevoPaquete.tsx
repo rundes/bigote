@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearPaquete } from "@/app/(app)/o/[orgId]/inventario/acciones";
-import type { Destinatario } from "@/lib/inventario";
+import type { Destinatario } from "@/lib/inventario-tipos";
 
 export function SheetNuevoPaquete({
   orgId,

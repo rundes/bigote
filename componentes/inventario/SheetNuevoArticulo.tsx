@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearArticulo } from "@/app/(app)/o/[orgId]/inventario/acciones";
-import { ETIQUETAS_CATEGORIA, type Ubicacion } from "@/lib/inventario";
+import { ETIQUETAS_CATEGORIA, type Ubicacion } from "@/lib/inventario-tipos";
 
 export function SheetNuevoArticulo({
   orgId,

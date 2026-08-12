@@ -7,7 +7,7 @@ import {
   devolverArticulo,
   ajustarStock,
 } from "@/app/(app)/o/[orgId]/inventario/acciones";
-import type { EstadoActivo, Naturaleza } from "@/lib/inventario";
+import type { EstadoActivo, Naturaleza } from "@/lib/inventario-tipos";
 
 type Miembro = { id: string; nombre: string };
 

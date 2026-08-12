@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FORMATOS, type FormatoEtiqueta } from "@/lib/etiquetas";
+import { FORMATOS, type FormatoEtiqueta } from "@/lib/etiquetas-formatos";
 
 type Fila = { codigo: string; nombre: string; detalle: string };
 

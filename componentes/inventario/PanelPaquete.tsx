@@ -6,7 +6,7 @@ import {
   agregarAPaquete,
   despacharPaquete,
 } from "@/app/(app)/o/[orgId]/inventario/acciones";
-import type { ItemDePaquete, Naturaleza } from "@/lib/inventario";
+import type { ItemDePaquete, Naturaleza } from "@/lib/inventario-tipos";
 
 type Opcion = {
   id: string;

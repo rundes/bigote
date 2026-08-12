@@ -3,7 +3,7 @@ import {
   FORMATOS,
   type EtiquetaRenderizada,
   type FormatoEtiqueta,
-} from "@/lib/etiquetas";
+} from "@/lib/etiquetas-formatos";
 
 /*
   Hoja A4 lista para imprimir. Sin librería de PDF: el navegador ya sabe paginar
