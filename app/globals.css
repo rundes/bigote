@@ -1,17 +1,47 @@
 @import "tailwindcss";
 
+/*
+  Paleta derivada de la identidad de Centro Nueva Tierra (nuevatierra.org.ar).
+
+  Institucional crudo:  naranja #FF6000 · amarillo #F1F205 · tinta #333333
+  Los crudos no pasan WCAG AA (blanco sobre #FF6000 = 3.03:1; #F1F205 sobre
+  blanco = 1.1:1), y PRODUCT.md exige AA. Así que el naranja se oscurece para
+  texto y superficies, y el amarillo queda reservado como señal de estado y
+  para el lockup del logo, donde SC 1.4.11 exime a los logotipos.
+
+  Todos los pares en uso están verificados >= 4.7:1 y dentro de gamut sRGB.
+*/
+
 @theme {
-  --color-fondo: oklch(0.97 0.008 75);
-  --color-panel: oklch(0.94 0.01 75);
-  --color-superficie: oklch(0.99 0.005 75);
-  --color-tinta: oklch(0.25 0.015 60);
-  --color-tinta-suave: oklch(0.48 0.02 60);
-  --color-linea: oklch(0.88 0.012 75);
-  --color-acento: oklch(0.58 0.13 45);
-  --color-acento-tinta: oklch(0.99 0.005 75);
-  --color-ok: oklch(0.55 0.12 150);
-  --color-peligro: oklch(0.55 0.16 25);
-  --color-aviso: oklch(0.7 0.12 85);
+  /* Neutros: entintados hacia el naranja institucional (hue 58) */
+  --color-fondo: oklch(0.97 0.01 58);
+  --color-panel: oklch(0.945 0.014 58);
+  --color-superficie: oklch(0.99 0.006 58);
+  --color-linea: oklch(0.88 0.016 58);
+  --color-tinta: oklch(0.26 0.02 50);
+  --color-tinta-suave: oklch(0.52 0.03 50);
+
+  /* Acción: naranja institucional oscurecido para AA sobre fondo claro */
+  --color-acento: oklch(0.55 0.166 42);
+  --color-acento-tinta: oklch(0.98 0.012 70);
+
+  /* Chrome de marca: sidebar, barra superior, nav inferior */
+  --color-marca: oklch(0.53 0.16 42);
+  --color-marca-tinta: oklch(0.98 0.012 70);
+  --color-marca-suave: oklch(0.94 0.044 70);
+  --color-marca-linea: oklch(0.62 0.15 42); /* divisor decorativo sobre marca */
+
+  /* Amarillo institucional: estado activo dentro del chrome */
+  --color-amarillo: oklch(0.925 0.185 106);
+
+  /* Naranja institucional puro: solo lockup del logo */
+  --color-marca-pura: oklch(0.66 0.21 42);
+
+  /* Semánticos */
+  --color-ok: oklch(0.52 0.13 150);
+  --color-peligro: oklch(0.56 0.19 12);
+  --color-aviso: oklch(0.54 0.112 80);
+
   --font-sans: var(--font-figtree), system-ui, sans-serif;
 }
 

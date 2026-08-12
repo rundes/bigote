@@ -1,4 +1,5 @@
 import { FormIngreso } from "./FormIngreso";
+import { Logo } from "@/componentes/marca/Logo";
 import { APP_VERSION } from "@/lib/version";
 
 export default async function PaginaIngresar({
@@ -11,18 +12,22 @@ export default async function PaginaIngresar({
     error === "enlace" ? "El enlace venció o ya se usó. Pedí uno nuevo." : null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-fondo px-4">
+    <main className="flex min-h-screen items-center justify-center bg-fondo px-4 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-tinta">bigote</h1>
-          <p className="mt-2 text-sm text-tinta-suave">
-            Gestión de tu organización
-          </p>
+        <div className="overflow-hidden rounded-xl border border-linea bg-superficie shadow-sm">
+          {/* Encabezado de la tarjeta: único lugar con el naranja institucional
+              puro. El lockup amarillo sobre naranja es la firma de Centro
+              Nueva Tierra, y su wordmark es texto real, así que hace de h1. */}
+          <h1 className="bg-marca-pura px-6 py-8">
+            <Logo className="text-[28px] text-amarillo" />
+          </h1>
+
+          <div className="p-6">
+            <FormIngreso errorInicial={errorInicial} />
+          </div>
         </div>
-        <FormIngreso errorInicial={errorInicial} />
-        <p className="mt-8 text-center text-xs text-tinta-suave">
-          v{APP_VERSION}
-        </p>
+
+        <p className="mt-6 text-center text-xs text-tinta-suave">v{APP_VERSION}</p>
       </div>
     </main>
   );

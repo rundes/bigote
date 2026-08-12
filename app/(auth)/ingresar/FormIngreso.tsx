@@ -78,7 +78,9 @@ export function FormIngreso({ errorInicial }: { errorInicial?: string | null }) 
   }
 
   return (
-    <div className="rounded-xl border border-linea bg-superficie p-6 shadow-sm">
+    // Sin tarjeta propia: la página de ingreso la envuelve en una sola tarjeta
+    // cuyo encabezado es el lockup institucional.
+    <div>
       <button
         type="button"
         onClick={entrarConGoogle}

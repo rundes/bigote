@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
+/*
+  Vive siempre dentro del chrome de marca (sidebar y barra superior), así que
+  el disparador se pinta sobre naranja. El desplegable es un popover y se
+  queda en superficie clara.
+*/
 export function SwitcherOrg({
   orgId,
   nombreOrg,
@@ -21,7 +26,9 @@ export function SwitcherOrg({
   }, [orgId]);
 
   if (orgs.length <= 1) {
-    return <span className="text-sm font-medium text-tinta">{nombreOrg}</span>;
+    return (
+      <span className="block truncate text-sm font-semibold text-marca-tinta">{nombreOrg}</span>
+    );
   }
 
   return (
@@ -30,13 +37,13 @@ export function SwitcherOrg({
         type="button"
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
-        className="flex h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-tinta transition hover:bg-linea/40"
+        className="flex h-11 w-full items-center gap-1 rounded-lg px-2 text-sm font-semibold text-marca-tinta transition hover:bg-marca-tinta/12"
       >
-        {nombreOrg}
+        <span className="truncate">{nombreOrg}</span>
         <ChevronDown
           size={20}
           strokeWidth={1.75}
-          className={`transition-transform ${abierto ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform ${abierto ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -53,7 +60,7 @@ export function SwitcherOrg({
                     router.push(`/o/${org.id}`);
                   }}
                   className={`flex h-11 w-full items-center px-3 text-left text-sm transition hover:bg-panel ${
-                    org.id === orgId ? "text-acento" : "text-tinta"
+                    org.id === orgId ? "font-semibold text-acento" : "text-tinta"
                   }`}
                 >
                   {org.nombre}
