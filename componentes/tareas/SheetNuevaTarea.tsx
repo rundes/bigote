@@ -141,6 +141,18 @@ export function SheetNuevaTarea({
                 </select>
               </div>
 
+              <div className="flex flex-col gap-1">
+                <label htmlFor="fecha-tarea" className="text-[13px] text-tinta-suave">
+                  Para cuándo (opcional)
+                </label>
+                <input
+                  id="fecha-tarea"
+                  name="fecha_estimada"
+                  type="date"
+                  className="h-11 w-full rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta focus:border-acento focus:outline-none"
+                />
+              </div>
+
               <button
                 type="submit"
                 disabled={enCurso}

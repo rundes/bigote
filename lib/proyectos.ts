@@ -7,6 +7,7 @@ export type Tarea = {
   dificultad: number;
   estado: "pendiente" | "en_curso" | "hecha";
   asignado_a: string | null;
+  fecha_estimada: string | null;
 };
 
 export type TareaAsignada = Tarea & { asignado_nombre: string };
@@ -118,12 +119,13 @@ export async function obtenerProyecto(proyectoId: string): Promise<{
     dificultad: number;
     estado: "pendiente" | "en_curso" | "hecha";
     asignado_a: string | null;
+    fecha_estimada: string | null;
     completada_por: string | null;
     completada_at: string | null;
   };
   const { data: tareasFilas } = await supabase
     .from("tareas")
-    .select("id, titulo, descripcion, dificultad, estado, asignado_a, completada_por, completada_at")
+    .select("id, titulo, descripcion, dificultad, estado, asignado_a, fecha_estimada, completada_por, completada_at")
     .eq("proyecto_id", proyectoId)
     .returns<TareaFila[]>();
   const tareas = tareasFilas ?? [];
@@ -152,6 +154,7 @@ export async function obtenerProyecto(proyectoId: string): Promise<{
     dificultad: t.dificultad,
     estado: t.estado,
     asignado_a: t.asignado_a,
+    fecha_estimada: t.fecha_estimada,
   });
 
   const pool = tareas
@@ -190,6 +193,7 @@ type TareaConProyectoFila = {
   dificultad: number;
   estado: "pendiente" | "en_curso" | "hecha";
   asignado_a: string | null;
+  fecha_estimada: string | null;
   proyectos: { id: string; nombre: string; org_id: string }[] | { id: string; nombre: string; org_id: string } | null;
 };
 
@@ -202,6 +206,7 @@ function aTareaConProyecto(t: TareaConProyectoFila): TareaConProyecto {
     dificultad: t.dificultad,
     estado: t.estado,
     asignado_a: t.asignado_a,
+    fecha_estimada: t.fecha_estimada,
     proyecto: { id: proyecto?.id ?? "", nombre: proyecto?.nombre ?? "" },
   };
 }
@@ -220,7 +225,7 @@ export async function misTareas(
   const idsProyectosOrg = (proyectosOrg ?? []).map((p) => p.id);
   if (idsProyectosOrg.length === 0) return { asignadas: [], pools: [] };
 
-  const columnas = "id, titulo, descripcion, dificultad, estado, asignado_a, proyectos(id, nombre, org_id)";
+  const columnas = "id, titulo, descripcion, dificultad, estado, asignado_a, fecha_estimada, proyectos(id, nombre, org_id)";
 
   const { data: asignadasFilas } = await supabase
     .from("tareas")

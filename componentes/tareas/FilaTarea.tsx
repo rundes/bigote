@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PipsDificultad } from "@/componentes/tareas/PipsDificultad";
 import { BotonTomar } from "@/componentes/tareas/BotonTomar";
 import { BotonCompletar } from "@/componentes/tareas/BotonCompletar";
+import { etiquetaUrgencia, claseUrgencia } from "@/lib/fechas";
 
 export type AccionFilaTarea = "tomar" | "completar";
 
@@ -15,7 +16,7 @@ export function FilaTarea({
   subtitulo,
   tachada,
 }: {
-  tarea: { id: string; titulo: string; dificultad: number };
+  tarea: { id: string; titulo: string; dificultad: number; fecha_estimada?: string | null };
   accion?: AccionFilaTarea;
   orgId: string;
   proyectoId: string;
@@ -45,9 +46,14 @@ export function FilaTarea({
           >
             {tarea.titulo}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <PipsDificultad valor={tarea.dificultad} />
             {subtitulo && <span className="text-xs text-tinta-suave">{subtitulo}</span>}
+            {tarea.fecha_estimada && !tachada && (
+              <span className={`text-xs ${claseUrgencia(tarea.fecha_estimada)}`}>
+                {etiquetaUrgencia(tarea.fecha_estimada)}
+              </span>
+            )}
           </div>
         </div>
 

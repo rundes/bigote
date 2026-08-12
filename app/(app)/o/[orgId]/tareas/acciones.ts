@@ -160,6 +160,14 @@ export async function crearTarea(proyectoId: string, formData: FormData): Promis
   const asignadoRaw = String(formData.get("asignado_a") ?? "").trim();
   const asignado_a = asignadoRaw ? asignadoRaw : null;
 
+  // Opcional: la mayoría de las tareas no llevan fecha, y exigirla la
+  // convertiría en ruido que nadie mira.
+  const fechaRaw = String(formData.get("fecha_estimada") ?? "").trim();
+  if (fechaRaw && !/^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)) {
+    return { error: "Esa fecha no es válida." };
+  }
+  const fecha_estimada = fechaRaw || null;
+
   const supabase = await crearClienteServidor();
 
   if (asignado_a) {
@@ -178,6 +186,7 @@ export async function crearTarea(proyectoId: string, formData: FormData): Promis
     descripcion,
     dificultad,
     asignado_a,
+    fecha_estimada,
   });
   if (error) return { error: error.message };
 
