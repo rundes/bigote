@@ -56,6 +56,7 @@ export function SheetReserva({
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [creandoCliente, setCreandoCliente] = useState(false);
   const [errorCliente, setErrorCliente] = useState<string | null>(null);
+  const [emailCliente, setEmailCliente] = useState("");
 
   const plan = planesAplicables.find((p) => p.id === planId);
   const costo = plan && !plan.gratuito ? plan.precio_hora * horas : 0;
@@ -94,7 +95,7 @@ export function SheetReserva({
   async function agregarCliente() {
     setCreandoCliente(true);
     setErrorCliente(null);
-    const resultado = await crearClienteRapido(orgId, orgPropietariaId, busquedaCliente, "");
+    const resultado = await crearClienteRapido(orgId, orgPropietariaId, busquedaCliente, "", emailCliente);
     setCreandoCliente(false);
     if (resultado.error || !resultado.id) {
       setErrorCliente(resultado.error ?? "No pudimos crear el cliente.");
@@ -268,16 +269,27 @@ export function SheetReserva({
                         </button>
                       ))}
                       {busquedaCliente.trim() && (
-                        <button
-                          type="button"
-                          onClick={agregarCliente}
-                          disabled={creandoCliente}
-                          className="min-h-11 px-3 py-1.5 text-left text-sm font-medium text-acento transition hover:bg-fondo disabled:opacity-60"
-                        >
-                          {creandoCliente
-                            ? "Agregando…"
-                            : `Agregá a “${busquedaCliente.trim()}” como cliente`}
-                        </button>
+                        <div className="flex flex-col gap-2 px-3 py-2">
+                          {/* Sin email, una reserva con pago previo no se puede
+                              crear: no hay a dónde mandar los datos de la cuenta. */}
+                          <input
+                            type="email"
+                            value={emailCliente}
+                            onChange={(e) => setEmailCliente(e.target.value)}
+                            placeholder="Email (para avisos y cobros)"
+                            className="h-11 rounded-lg border border-linea bg-superficie px-3 text-sm text-tinta placeholder:text-tinta-suave focus:border-acento focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={agregarCliente}
+                            disabled={creandoCliente}
+                            className="min-h-11 rounded-lg text-left text-sm font-medium text-acento transition hover:bg-fondo disabled:opacity-60"
+                          >
+                            {creandoCliente
+                              ? "Agregando…"
+                              : `Agregá a “${busquedaCliente.trim()}” como cliente`}
+                          </button>
+                        </div>
                       )}
                       {clientesFiltrados.length === 0 && !busquedaCliente.trim() && (
                         <p className="px-3 py-2 text-sm text-tinta-suave">

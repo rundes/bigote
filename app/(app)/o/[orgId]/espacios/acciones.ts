@@ -151,11 +151,12 @@ export async function editarSala(
   return {};
 }
 
-function leerPlan(formData: FormData): { error?: string; valores?: { nombre: string; gratuito: boolean; precio_hora: number; solo_salas_publicas: boolean } } {
+function leerPlan(formData: FormData): { error?: string; valores?: { nombre: string; gratuito: boolean; precio_hora: number; solo_salas_publicas: boolean; requiere_pago_previo: boolean } } {
   const nombre = String(formData.get("nombre") ?? "").trim();
   if (!nombre) return { error: "El nombre es obligatorio." };
   const gratuito = formData.get("gratuito") === "on";
   const solo_salas_publicas = formData.get("solo_salas_publicas") === "on";
+  const requiere_pago_previo = formData.get("requiere_pago_previo") === "on";
   let precio_hora = 0;
   if (!gratuito) {
     precio_hora = Number(formData.get("precio_hora"));
@@ -163,7 +164,7 @@ function leerPlan(formData: FormData): { error?: string; valores?: { nombre: str
       return { error: "El precio por hora tiene que ser mayor a cero." };
     }
   }
-  return { valores: { nombre, gratuito, precio_hora, solo_salas_publicas } };
+  return { valores: { nombre, gratuito, precio_hora, solo_salas_publicas, requiere_pago_previo } };
 }
 
 export async function crearPlan(orgId: string, formData: FormData): Promise<Resultado> {
@@ -255,17 +256,25 @@ export async function crearClienteRapido(
   orgId: string,
   orgPropietariaId: string,
   nombre: string,
-  contacto: string
+  contacto: string,
+  email?: string
 ): Promise<Resultado & { id?: string }> {
   const limpio = nombre.trim();
   if (!limpio) return { error: "El nombre es obligatorio." };
+
+  // El email no es obligatorio, pero sin él la reserva con pago previo no se
+  // puede crear: la RPC no tiene a dónde mandar los datos de la cuenta.
+  const mail = (email ?? "").trim();
+  if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) {
+    return { error: "Ese email no parece válido." };
+  }
 
   // La política clientes_insert valida la membresía (directa o por
   // co-gestión) contra la org propietaria del edificio.
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("clientes")
-    .insert({ org_id: orgPropietariaId, nombre: limpio, contacto: contacto.trim() || null })
+    .insert({ org_id: orgPropietariaId, nombre: limpio, contacto: contacto.trim() || null, email: mail || null })
     .select("id")
     .single();
   if (error || !data) return { error: error?.message ?? "No pudimos crear el cliente." };

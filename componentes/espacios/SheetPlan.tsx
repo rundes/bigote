@@ -152,6 +152,26 @@ export function SheetPlan({
                 Solo salas públicas
               </label>
 
+              {/* Solo tiene sentido en planes con costo: un plan gratuito nunca
+                  entra al circuito de cobro previo. */}
+              {!gratuito && (
+                <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-tinta">
+                  <input
+                    type="checkbox"
+                    name="requiere_pago_previo"
+                    defaultChecked={plan?.requiere_pago_previo ?? false}
+                    className="mt-2 h-5 w-5 shrink-0 accent-[var(--color-acento)]"
+                  />
+                  <span>
+                    Cobrar antes de confirmar
+                    <span className="block text-xs text-tinta-suave">
+                      El horario queda retenido hasta que se registre el pago. Requiere
+                      tener los cobros activados en Finanzas.
+                    </span>
+                  </span>
+                </label>
+              )}
+
               <button
                 type="submit"
                 disabled={enCurso}

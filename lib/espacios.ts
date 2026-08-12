@@ -32,6 +32,7 @@ export type Plan = {
   gratuito: boolean;
   precio_hora: number;
   solo_salas_publicas: boolean;
+  requiere_pago_previo: boolean;
 };
 
 export type ReservaDia = {
@@ -172,7 +173,7 @@ export async function obtenerEdificio(edificioId: string): Promise<{
 
   const { data: planesFilas } = await supabase
     .from("planes_reserva")
-    .select("id, nombre, gratuito, precio_hora, solo_salas_publicas")
+    .select("id, nombre, gratuito, precio_hora, solo_salas_publicas, requiere_pago_previo")
     .eq("org_id", edificio.org_propietaria_id)
     .order("nombre")
     .returns<Plan[]>();
