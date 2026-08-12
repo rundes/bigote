@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
-import { despachar, type EnviarEmail } from "@/lib/notificaciones/despachar";
+import { despachar, despacharPush, type EnviarEmail } from "@/lib/notificaciones/despachar";
 
 export const maxDuration = 60;
 
@@ -29,6 +29,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "falta RESEND_API_KEY" }, { status: 500 });
   }
 
-  const resumen = await despachar(crearClienteAdmin(), enviarConResend, from);
-  return NextResponse.json(resumen);
+  const admin = crearClienteAdmin();
+
+  // Los dos pases van en la misma corrida del cron pero por separado: cada uno
+  // reclama su canal. Si push no está configurado, despacharPush devuelve el
+  // resumen en cero sin tocar la cola.
+  const email = await despachar(admin, enviarConResend, from);
+  const push = await despacharPush(admin);
+
+  return NextResponse.json({ email, push });
 }
