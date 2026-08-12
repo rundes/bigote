@@ -3,7 +3,7 @@ import { renderEmail, decidirEnvio } from "./emails";
 import { enviarPush, renderPush, pushConfigurado, type SuscripcionPush } from "./push";
 
 export type EnviarEmail = (args: {
-  from: string; to: string; subject: string; text: string;
+  from: string; to: string; subject: string; text: string; html?: string;
 }) => Promise<{ ok: boolean; error?: string }>;
 
 export type Resumen = {
@@ -121,8 +121,8 @@ export async function despachar(
         continue;
       }
 
-      const { asunto, texto } = renderEmail(n);
-      const envio = await enviarEmail({ from, to: perfil!.email, subject: asunto, text: texto });
+      const { asunto, texto, html } = renderEmail(n);
+      const envio = await enviarEmail({ from, to: perfil!.email, subject: asunto, text: texto, html });
 
       if (envio.ok) {
         envioExitoso = true;

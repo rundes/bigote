@@ -1,4 +1,6 @@
-// Templates de texto y decisiones de envío. Puro: sin red ni DB, para
+import { envolver, aTexto, type Contenido, type Detalle } from "./plantilla";
+
+// Templates y decisiones de envío. Puro: sin red ni DB, para
 // testear sin mocks. El dispatcher (route handler) orquesta alrededor.
 
 const APP_URL = "https://bigote-gilt.vercel.app";
@@ -19,80 +21,175 @@ function fechaLegible(fecha: unknown, hora: unknown): string {
   return `${dia} a las ${hora}:00`;
 }
 
-export function renderEmail(n: NotificacionEmail): { asunto: string; texto: string } {
+export function renderEmail(
+  n: NotificacionEmail
+): { asunto: string; texto: string; html: string } {
+  const c = contenidoDe(n);
+  return { asunto: c.asunto, texto: aTexto(c.cuerpo), html: envolver(c.cuerpo) };
+}
+
+/**
+ * El encabezado del mail es el contexto de la persona, no el nombre de la app:
+ * quien recibe un aviso de reserva piensa en el edificio, y quien recibe uno de
+ * tarea piensa en el proyecto. "bigote" solo aparece si no hay ninguno.
+ */
+function encabezadoDe(p: Record<string, unknown>): string {
+  return String(p.edificio || p.proyecto || "bigote");
+}
+
+function contenidoDe(n: NotificacionEmail): { asunto: string; cuerpo: Contenido } {
   const p = n.payload;
+  const cab = encabezadoDe(p);
+  const sala = String(p.sala ?? "");
+  const cuando = p.fecha ? fechaLegible(p.fecha, p.hora_inicio) : "";
+  const horas = p.horas ? `${p.horas} h` : "";
+
   switch (n.evento) {
     case "reserva_confirmada":
       return {
-        asunto: `Reserva confirmada: ${p.sala}`,
-        texto: `Reservaste ${p.sala} (${p.edificio}) el ${fechaLegible(p.fecha, p.hora_inicio)}, ${p.horas} h.\n\nVer tus reservas: ${APP_URL}`,
+        asunto: `Reserva confirmada: ${sala}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Tu reserva está confirmada",
+          detalles: [
+            { etiqueta: "Sala", valor: sala },
+            { etiqueta: "Cuándo", valor: cuando, destacado: true },
+            { etiqueta: "Duración", valor: horas },
+          ],
+          cta: { texto: "Ver mis reservas", url: APP_URL },
+        },
       };
+
     case "reserva_recordatorio":
       return {
-        asunto: `Mañana: ${p.sala} a las ${p.hora_inicio}:00`,
-        texto: `Te esperamos mañana en ${p.sala} (${p.edificio}) a las ${p.hora_inicio}:00, ${p.horas} h.\n\nSi no vas a ir, cancelá la reserva: ${APP_URL}`,
+        asunto: `Mañana: ${sala} a las ${p.hora_inicio}:00`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: `Mañana a las ${p.hora_inicio}:00`,
+          parrafos: [`Te esperamos en ${sala}.`],
+          detalles: [
+            { etiqueta: "Sala", valor: sala },
+            { etiqueta: "Duración", valor: horas },
+          ],
+          cta: { texto: "Ver la reserva", url: APP_URL },
+          nota: "Si no vas a poder ir, cancelala así el horario queda libre para otra persona.",
+        },
       };
-    case "reserva_cancelada": {
-      const motivo = p.motivo ? `\nMotivo: ${p.motivo}` : "";
+
+    case "reserva_cancelada":
       return {
-        asunto: `Reserva cancelada: ${p.sala}`,
-        texto: `Se canceló la reserva de ${p.sala} (${p.edificio}) del ${fechaLegible(p.fecha, p.hora_inicio)}.${motivo}\n\nVer disponibilidad: ${APP_URL}`,
+        asunto: `Reserva cancelada: ${sala}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Se canceló una reserva",
+          detalles: [
+            { etiqueta: "Sala", valor: sala },
+            { etiqueta: "Era", valor: cuando },
+            ...(p.motivo ? [{ etiqueta: "Motivo", valor: String(p.motivo) }] : []),
+          ],
+          cta: { texto: "Ver disponibilidad", url: APP_URL },
+        },
       };
-    }
-    case "tarea_asignada":
-      return {
-        asunto: `Tarea nueva en ${p.proyecto}`,
-        texto: `Te asignaron "${p.titulo}" en ${p.proyecto}.\n\nTomala o mirala: ${APP_URL}`,
-      };
-    case "tarea_hecha":
-      return {
-        asunto: `Hecha: ${p.titulo}`,
-        texto: `"${p.titulo}" (${p.proyecto}) quedó marcada como hecha.\n\nVer el proyecto: ${APP_URL}`,
-      };
+
     case "reserva_esperando_pago": {
-      // Los datos de la cuenta vienen congelados en el payload (migración 0014):
-      // si mañana cambia el alias, este mail sigue coincidiendo con lo enviado.
-      const cuenta = [
-        p.alias ? `Alias: ${p.alias}` : "",
-        p.cbu ? `CBU: ${p.cbu}` : "",
-        p.titular ? `Titular: ${p.titular}` : "",
-        p.banco ? `Banco: ${p.banco}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const cuenta: Detalle[] = [];
+      if (p.alias) cuenta.push({ etiqueta: "Alias", valor: String(p.alias), destacado: true });
+      if (p.cbu) cuenta.push({ etiqueta: "CBU", valor: String(p.cbu) });
+      if (p.titular) cuenta.push({ etiqueta: "Titular", valor: String(p.titular) });
+      if (p.banco) cuenta.push({ etiqueta: "Banco", valor: String(p.banco) });
+
       const vence = p.vence_at
         ? new Date(String(p.vence_at)).toLocaleString("es-AR", {
             timeZone: "America/Argentina/Buenos_Aires",
-            day: "2-digit",
-            month: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
+            day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
           })
         : null;
-      const extra = p.instrucciones ? `\n\n${p.instrucciones}` : "";
+
       return {
-        asunto: `Reservá con pago: ${p.sala}`,
-        texto:
-          `Guardamos ${p.sala} (${p.edificio}) para el ${fechaLegible(p.fecha, p.hora_inicio)}, ${p.horas} h.\n\n` +
-          `Para confirmarla, transferí $${p.costo}:\n\n${cuenta}\n\n` +
-          (vence ? `El horario queda reservado hasta el ${vence}. Pasado ese plazo se libera.` : "") +
-          `${extra}\n\nVer la reserva: ${APP_URL}`,
+        asunto: `Falta el pago para confirmar: ${sala}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Falta el pago para confirmar",
+          parrafos: [
+            `Guardamos ${sala} para el ${cuando}${horas ? `, ${horas}` : ""}.`,
+            "Para confirmarla, transferí a esta cuenta:",
+          ],
+          detalles: [
+            ...cuenta,
+            { etiqueta: "Monto", valor: `$${p.costo}`, destacado: true },
+          ],
+          cta: { texto: "Ver la reserva", url: APP_URL },
+          nota: [
+            vence ? `El horario queda reservado hasta el ${vence}; pasado ese plazo se libera.` : "",
+            String(p.instrucciones ?? ""),
+          ].filter(Boolean).join(" "),
+        },
       };
     }
+
     case "reserva_vencida":
       return {
-        asunto: `Se liberó tu reserva: ${p.sala}`,
-        texto: `No llegamos a registrar el pago, así que se liberó ${p.sala} (${p.edificio}) del ${fechaLegible(p.fecha, p.hora_inicio)}.\n\nSi todavía la querés, reservá de nuevo: ${APP_URL}`,
+        asunto: `Se liberó tu reserva: ${sala}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Se liberó tu reserva",
+          parrafos: [
+            `No llegamos a registrar el pago, así que ${sala} volvió a quedar disponible.`,
+          ],
+          detalles: [{ etiqueta: "Era", valor: cuando }],
+          cta: { texto: "Reservar de nuevo", url: APP_URL },
+        },
       };
+
     case "pago_registrado":
       return {
-        asunto: `Pago registrado: ${p.sala}`,
-        texto: `Recibimos el pago y tu reserva de ${p.sala} quedó confirmada.\n\nVer tus reservas: ${APP_URL}`,
+        asunto: `Pago registrado: ${sala}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Recibimos el pago",
+          parrafos: [`Tu reserva de ${sala} quedó confirmada.`],
+          detalles: [{ etiqueta: "Cuándo", valor: cuando, destacado: true }],
+          cta: { texto: "Ver mis reservas", url: APP_URL },
+        },
       };
+
+    case "tarea_asignada":
+      return {
+        asunto: `Tarea nueva en ${p.proyecto}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Te asignaron una tarea",
+          detalles: [
+            { etiqueta: "Tarea", valor: String(p.titulo), destacado: true },
+            { etiqueta: "Proyecto", valor: String(p.proyecto) },
+          ],
+          cta: { texto: "Ver la tarea", url: APP_URL },
+        },
+      };
+
+    case "tarea_hecha":
+      return {
+        asunto: `Hecha: ${p.titulo}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Tarea completada",
+          detalles: [
+            { etiqueta: "Tarea", valor: String(p.titulo) },
+            { etiqueta: "Proyecto", valor: String(p.proyecto) },
+          ],
+          cta: { texto: "Ver el proyecto", url: APP_URL },
+        },
+      };
+
     default:
       return {
         asunto: "Novedades en bigote",
-        texto: `Tenés novedades en tu organización.\n\nEntrá: ${APP_URL}`,
+        cuerpo: {
+          encabezado: cab,
+          titulo: "Tenés novedades",
+          parrafos: ["Entrá a la app para verlas."],
+          cta: { texto: "Abrir bigote", url: APP_URL },
+        },
       };
   }
 }

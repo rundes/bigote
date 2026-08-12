@@ -4,14 +4,16 @@ import { despachar, despacharPush, type EnviarEmail } from "@/lib/notificaciones
 
 export const maxDuration = 60;
 
-const enviarConResend: EnviarEmail = async ({ from, to, subject, text }) => {
+const enviarConResend: EnviarEmail = async ({ from, to, subject, text, html }) => {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to, subject, text }),
+    // `text` va siempre: es el fallback para clientes que no muestran HTML,
+    // y ayuda a no caer en spam.
+    body: JSON.stringify({ from, to, subject, text, html }),
   });
   if (res.ok) return { ok: true };
   const cuerpo = await res.text();

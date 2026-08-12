@@ -43,3 +43,36 @@ describe("decidirEnvio", () => {
     expect(decidirEnvio(recordatorio, { email: true }, new Date("2027-11-04T13:05:00Z"))).toBe("enviar");
   });
 });
+
+describe("encabezado del mail", () => {
+  it("usa el edificio, no el nombre de la app", () => {
+    const r = renderEmail({
+      evento: "reserva_confirmada",
+      programada_para: null,
+      payload: { sala: "Sala Norte", edificio: "Casa Delta", fecha: "2026-08-20", hora_inicio: 10, horas: 2 },
+    });
+    // En la banda superior del HTML y en la primera línea del texto plano.
+    expect(r.html).toContain("Casa Delta");
+    expect(r.texto.split("\n")[0]).toBe("Casa Delta");
+    expect(r.html).not.toContain(">bigote<");
+  });
+
+  it("cae al proyecto cuando el evento no tiene edificio", () => {
+    const r = renderEmail({
+      evento: "tarea_asignada",
+      programada_para: null,
+      payload: { titulo: "Cargar movimientos", proyecto: "Administración" },
+    });
+    expect(r.texto.split("\n")[0]).toBe("Administración");
+  });
+
+  it("el HTML no lleva estilos externos ni <style>", () => {
+    const r = renderEmail({
+      evento: "reserva_confirmada",
+      programada_para: null,
+      payload: { sala: "S", edificio: "E", fecha: "2026-08-20", hora_inicio: 10, horas: 1 },
+    });
+    // Gmail y Outlook los descartan: si aparecen, el mail se ve sin estilo.
+    expect(r.html).not.toMatch(/<style|rel="stylesheet"/);
+  });
+});
